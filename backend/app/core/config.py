@@ -13,7 +13,9 @@ ORIGINS = [
 
 JWT_ISS = "wordsjar"
 JWT_ALGORITHM = "HS256"
-ACCESS_TOKEN_TTL = 60*60
+
+ACCESS_TOKEN_TTL = 60*60*12  # 12 hours
+REFRESH_TOKEN_TTL = 60*60*24*7  # 7 days
 
 
 class AppSettings(BaseSettings):
