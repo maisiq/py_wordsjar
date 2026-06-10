@@ -1,6 +1,7 @@
 from logging import Logger
 from typing import Any, Protocol
 
+from core import config
 from core.errors import AlreadyExistsError, AuthError, InternalError
 from models.domain import Tokens, User, UserInfo
 
@@ -105,9 +106,9 @@ class AuthService:
     async def logout(self, tokens: Tokens) -> None:
         try:
             if tokens.access:
-                await self._token_storage.store(tokens.access, "1", 10)
+                await self._token_storage.store(tokens.access, "1", config.ACCESS_TOKEN_TTL)
             if tokens.refresh:
-                await self._token_storage.store(tokens.refresh, "1", 10)
+                await self._token_storage.store(tokens.refresh, "1", config.REFRESH_TOKEN_TTL)
         except Exception as e:
             self._log.error("failed to store tokens: %s", e)
             raise InternalError("internal error")
