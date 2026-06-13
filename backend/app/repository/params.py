@@ -6,4 +6,3 @@ class QueryParams(BaseModel):
     sort_by: str | None = None
     desc: bool | None = None
     pointer: str = ""
-    after_pointer: bool = True  # get results after pointer
