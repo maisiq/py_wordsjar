@@ -1,4 +1,5 @@
 from core.errors import AlreadyExistsError, NotFound
+from models.mappers import word_orm_to_domain
 from models.orm import WordORM
 from psycopg.errors import UniqueViolation
 from repository.params import QueryParams
@@ -19,13 +20,7 @@ class WordRepository:
         if word_obj is None:
             raise NotFound(f"word '{word}' not found")
 
-        return Word(
-            id=word_obj.id,
-            en=word_obj.en, 
-            ru=word_obj.ru, 
-            transcription=word_obj.transcription,
-            examples=word_obj.examples,
-        )
+        return word_orm_to_domain(word_obj)
 
     async def add_word(self, word: Word) -> None:
         w = WordORM(
@@ -57,11 +52,5 @@ class WordRepository:
 
         words = [None]*len(word_objs)
         for idx, word in enumerate(word_objs):
-            words[idx] = Word(
-                id=word.id,
-                en=word.en, 
-                ru=word.ru, 
-                transcription=word.transcription,
-                examples=word.examples,
-            )
+            words[idx] = word_orm_to_domain(word)
         return words
