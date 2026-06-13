@@ -63,7 +63,6 @@ async def paginate(
         else:
             query_params.desc = params.cursor.desc
         query_params.pointer = params.cursor.value
-        query_params.after_pointer = params.cursor.next and not params.desc
 
     items = await fn(query_params)
 
