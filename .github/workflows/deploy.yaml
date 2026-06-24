@@ -55,6 +55,47 @@ jobs:
             git sparse-checkout set backend
           "
 
+      - name: Setup Python and install dependencies with uv
+        run: |
+          ssh -i ~/key.pem -o StrictHostKeyChecking=no -p ${{ vars.SSH_PORT }} ${{ vars.SSH_USER }}@${{ vars.SSH_ADDR }} "
+            set -e
+            cd ${{ env.WORK_DIR }}
+
+            # Check .python-version
+            if [ ! -f .python-version ]; then
+              echo 'No .python-version file, skipping'
+              exit 0
+            fi
+
+            PYTHON_VERSION=\$(cat .python-version)
+
+            case \$PYTHON_VERSION in
+              3.11) PYTHON_BIN=/opt/python3.11/bin/python3 ;;
+              3.12) PYTHON_BIN=/opt/python3.12/bin/python3 ;;
+              *)
+                echo \"Unsupported Python version: \$PYTHON_VERSION\"
+                exit 1
+                ;;
+            esac
+
+            # Detect previously used Python version in .venv (if exists)
+            PREV_PYTHON=\"\"
+            if [ -f .venv/bin/python ]; then
+              PREV_PYTHON=\$(readlink -f .venv/bin/python)
+            fi
+
+            # If Python version changed or .venv missing: recreate venv
+            if [ ! -d .venv ] || [ \"\$PREV_PYTHON\" != \"\$PYTHON_BIN\" ]; then
+              echo 'Creating fresh virtual environment...'
+              rm -rf .venv
+              uv venv --python \$PYTHON_BIN
+            fi
+
+            # Sync dependencies from pyproject.toml (in backend/)
+            cd backend
+            uv sync
+          "
+
       - name: Restart systemd service
         run: |
           ssh -i ~/key.pem -o StrictHostKeyChecking=no -p ${{ vars.SSH_PORT }} ${{ vars.SSH_USER }}@${{ vars.SSH_ADDR }} "systemctl restart ${{ vars.SYSTEMD_SERVICE_NAME }}"
