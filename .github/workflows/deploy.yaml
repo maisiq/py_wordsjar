@@ -32,20 +32,29 @@ jobs:
         run: |
           ssh-keyscan -H -p ${{ vars.SSH_PORT }} ${{ vars.SSH_ADDR }} >> ~/.ssh/known_hosts
 
-      - name: Create work dir and checkout code
+      - name: Determine branch to checkout
+        id: branch
         run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            echo "BRANCH=${{ github.head_ref }}" >> $GITHUB_OUTPUT
+          else
+            echo "BRANCH=${{ github.ref_name }}" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Update code on server
+        run: |
+          BRANCH="${{ steps.branch.outputs.BRANCH }}"
           ssh -i ~/key.pem -o StrictHostKeyChecking=no -p ${{ vars.SSH_PORT }} ${{ vars.SSH_USER }}@${{ vars.SSH_ADDR }} "
             set -e
-            mkdir -p ${{ env.WORK_DIR }}
             cd ${{ env.WORK_DIR }}
             git init
             git remote add origin https://github.com/${{ github.repository }}.git 2>/dev/null || true
-            git fetch origin ${{ github.ref_name }}
-            git reset --hard origin/${{ github.ref_name }}
+            git fetch origin $BRANCH
+            git checkout $BRANCH
             git sparse-checkout init --cone
             git sparse-checkout set backend
-            git checkout ${{ github.ref_name }}
           "
 
       - name: Restart systemd service
-        run: ssh -i ~/key.pem -o StrictHostKeyChecking=no -p ${{ vars.SSH_PORT }} ${{ vars.SSH_USER }}@${{ vars.SSH_ADDR }} "systemctl restart ${{ vars.SYSTEMD_SERVICE_NAME }}"
+        run: |
+          ssh -i ~/key.pem -o StrictHostKeyChecking=no -p ${{ vars.SSH_PORT }} ${{ vars.SSH_USER }}@${{ vars.SSH_ADDR }} "systemctl restart ${{ vars.SYSTEMD_SERVICE_NAME }}"
