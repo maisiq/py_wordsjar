@@ -88,12 +88,12 @@ jobs:
             if [ ! -d .venv ] || [ \"\$PREV_PYTHON\" != \"\$PYTHON_BIN\" ]; then
               echo 'Creating fresh virtual environment...'
               rm -rf .venv
-              uv venv --python \$PYTHON_BIN
+              /root/.local/bin/uv venv --python \$PYTHON_BIN
             fi
 
             # Sync dependencies from pyproject.toml (in backend/)
             cd backend
-            uv sync
+            /root/.local/bin/uv sync
           "
 
       - name: Restart systemd service
