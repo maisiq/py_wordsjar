@@ -59,7 +59,7 @@ jobs:
         run: |
           ssh -i ~/key.pem -o StrictHostKeyChecking=no -p ${{ vars.SSH_PORT }} ${{ vars.SSH_USER }}@${{ vars.SSH_ADDR }} "
             set -e
-            cd ${{ env.WORK_DIR }}
+            cd ${{ env.WORK_DIR }}/backend
 
             # Check .python-version
             if [ ! -f .python-version ]; then
