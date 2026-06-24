@@ -1,0 +1,44 @@
+name: Deploy WordsJar Pipeline
+
+on:
+  push:
+    branches: [ "master" ]
+  pull_request:
+    types:
+      - opened
+      - edited
+      - reopened
+      - synchronize
+    branches: [ "master" ]
+    paths-ignore:
+      - '**/README.md'
+      - 'docs/**'
+      - '.gitignore'
+
+env:
+    WORK_DIR: ${{ vars.WORK_DIR }}
+
+
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    steps:
+      - name: copy ssh private key to file
+        run:
+            echo "${{ secrets.SSH_PRIV_KEY }}" > ~/key.pem
+      - name: ssh to deploy server
+        run: >-
+          ssh -i ~/key.pem ${{ vars.SSH_USER }}@${{ vars.SSH_ADDR }} -p ${{ vars.SSH_PORT }}
+
+      - name: Create work dir if not exists
+        run: mkdir -p ${{ env.WORK_DIR }}
+      - name: go into work dir
+        run:
+            cd ${{ env.WORK_DIR }}
+
+      - uses: actions/checkout@v4
+        with:
+            sparse-checkout: backend
+
+      - name: Restart systemd service
+        run: systemctl restart ${{ vars.SYSTEMD_SERVICE_NAME }}
