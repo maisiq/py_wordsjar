@@ -1,6 +1,6 @@
 from typing import Annotated
 
-from api.deps import get_exam_service, get_userdata
+from api.deps import get_exam_service, get_userdata_strict
 from api.v1.schemas import VerifyWordRequest
 from core import errors
 from fastapi import APIRouter, Depends, Query, status
@@ -18,7 +18,7 @@ router = APIRouter(
 
 @router.get("")
 async def test_user(
-    userdata: Annotated[str, Depends(get_userdata)],
+    userdata: Annotated[str, Depends(get_userdata_strict)],
     service: Annotated[ExamService, Depends(get_exam_service)],
     limit: int = Query(10, alias="per_page"), 
     cursor: str | None = None,
@@ -44,7 +44,7 @@ async def test_user(
 
 @router.post("")
 async def verify_word(
-    userdata: Annotated[str, Depends(get_userdata)],
+    userdata: Annotated[str, Depends(get_userdata_strict)],
     service: Annotated[ExamService, Depends(get_exam_service)],
     req: VerifyWordRequest,
 ):

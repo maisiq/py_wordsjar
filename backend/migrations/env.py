@@ -13,7 +13,7 @@ load_dotenv(BASE_DIR / "app" / ".env")
 
 
 config = context.config
-config.set_main_option("DB_URI", os.environ.get("PG_DSN"))
+config.set_main_option("DB_URI", os.environ.get("WORDSJAR_BACKEND_DB_DSN"))
 
 # Interpret the config file for Python logging.
 # This line sets up loggers basically.

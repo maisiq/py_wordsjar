@@ -1,6 +1,6 @@
 from typing import Annotated
 
-from api.deps import get_userdata, get_word_service
+from api.deps import get_userdata_strict, get_word_service
 from api.v1.schemas import AddWordRequest
 from core import errors
 from fastapi import APIRouter, Depends, Query, Security, status
@@ -51,7 +51,7 @@ async def word_list(
 
 @router.post("")
 async def add_word_global(
-    userdata: Annotated[str, Security(get_userdata, scopes=["admin"])],
+    userdata: Annotated[str, Security(get_userdata_strict, scopes=["admin"])],
     service: Annotated[WordService, Depends(get_word_service)],
     word_data: AddWordRequest,
 ):

@@ -3,6 +3,7 @@ import secrets
 
 from argon2 import PasswordHasher, exceptions
 from core import config
+from core.errors import ExpiredTokenError
 from joserfc import errors, jwt
 from joserfc.jwk import OctKey
 
@@ -33,17 +34,17 @@ def verify_password(plain: str, hashed: str):
         return False
 
 
-def create_access_token(valid_key: str, user_id: str, user_role: str):
+def create_access_token(cfg: config.JWTSettings, valid_key: str, user_id: str, user_role: str):
     key = OctKey.import_key(valid_key)
 
     header = {
         "typ": "JWT", 
-        "alg": config.JWT_ALGORITHM,
+        "alg": cfg.algorithm,
     }
 
-    exp = dt.datetime.now(dt.UTC) + dt.timedelta(seconds=config.ACCESS_TOKEN_TTL)
+    exp = dt.datetime.now(dt.UTC) + dt.timedelta(seconds=cfg.access_token_ttl)
     payload = {
-        "iss": config.JWT_ISS,
+        "iss": cfg.iss,
         "exp": exp,
         "sub": user_id,
         "role": user_role,
@@ -53,7 +54,7 @@ def create_access_token(valid_key: str, user_id: str, user_role: str):
     return ss
 
 
-def validate_access_token(valid_key: str, token_string: str) -> str | None:
+def validate_access_token(cfg: config.JWTSettings, valid_key: str, token_string: str) -> str | None:
     key = OctKey.import_key(valid_key)
     try:
         token = jwt.decode(token_string, key)
@@ -61,11 +62,13 @@ def validate_access_token(valid_key: str, token_string: str) -> str | None:
         return
 
     claims_requests = jwt.JWTClaimsRegistry(
-        iss={"essential": True, "value": config.JWT_ISS},
+        iss={"essential": True, "value": cfg.iss},
         sub={"essential": True},
     )
     try:
         claims_requests.validate(token.claims)
+    except errors.ExpiredTokenError:
+        raise ExpiredTokenError
     except errors.ClaimError as e:
         return
 

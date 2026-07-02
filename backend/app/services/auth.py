@@ -26,6 +26,7 @@ class AuthService:
     def __init__(
         self,
         log: Logger,
+        jwt_cfg: config.JWTSettings,
         user_repo: UserRepository,
         secret_repo: SecretRepository,
         token_storage: TokenStorage,
@@ -34,6 +35,7 @@ class AuthService:
         self._user_repo = user_repo
         self._secret_repo = secret_repo
         self._token_storage = token_storage
+        self._jwt_cfg = jwt_cfg
     
     async def create_user(self, username: str, password: str) -> None:
         hashed = hash_password(password)
@@ -73,7 +75,7 @@ class AuthService:
             self._log.error("failed to get sign key from secret repo: %s", e)
             raise InternalError("internal error")
 
-        ss = create_access_token(key, user.username, "default")
+        ss = create_access_token(self._jwt_cfg, key, user.username, user.role)
         refresh = generate_refresh_token()
 
         return Tokens(
