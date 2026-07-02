@@ -1,6 +1,6 @@
 from typing import Annotated
 
-from api.deps import get_auth_service, get_userdata
+from api.deps import get_auth_service, get_userdata_strict
 from api.v1.schemas import (
     AuthenticateRequest,
     CreateUserRequest,
@@ -44,7 +44,7 @@ async def authenticate_user(
 
 @router.get("/user/info")
 async def user_info(
-    userdata: Annotated[str, Depends(get_userdata)],
+    userdata: Annotated[str, Depends(get_userdata_strict)],
     service: Annotated[AuthService, Depends(get_auth_service)],
 ) -> UserInfoResponse | None:
     info = await service.get_user_info(userdata.username)
@@ -55,7 +55,7 @@ async def user_info(
 
 @router.post("/logout")
 async def logout(
-    userdata: Annotated[str, Depends(get_userdata)],
+    userdata: Annotated[str, Depends(get_userdata_strict)],
     service: Annotated[AuthService, Depends(get_auth_service)],
 ) -> SuccessResponse | None:
     try:

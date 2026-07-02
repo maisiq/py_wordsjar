@@ -3,10 +3,15 @@ from typing import Any
 from cachetools import TTLCache
 from core import config
 
-_data = TTLCache(256, config.REFRESH_TOKEN_TTL)
+_data: TTLCache | None = None
 
 
 class TokenStorage:
+    def __init__(self, cfg: config.JWTSettings):
+        global _data
+        if _data is None:
+            _data = TTLCache(256, cfg.refresh_token_ttl)
+
     async def store(self, key: str, value: Any, ttl: int) -> None:
         _data[key] = value
 

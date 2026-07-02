@@ -1,6 +1,6 @@
 from typing import Annotated
 
-from api.deps import get_jar_service, get_userdata
+from api.deps import get_jar_service, get_userdata_strict
 from api.v1.schemas import AddJarWordRequest
 from fastapi import APIRouter, Depends, Query, Security, status
 from fastapi.responses import JSONResponse
@@ -17,7 +17,7 @@ router = APIRouter(
 
 @router.get("")
 async def jar_words(
-    userdata: Annotated[str, Security(get_userdata, scopes=["user"])],
+    userdata: Annotated[str, Security(get_userdata_strict, scopes=["user", "admin"])],
     service: Annotated[JarService, Depends(get_jar_service)],
     sort: str = Query("en", alias="order_by", min_length=1),
     desc: bool = Query(False),
@@ -27,15 +27,15 @@ async def jar_words(
     if cursor:
         try:
             parsed_cur = decode_cursor(cursor)
-        except ValidationError as e:
+        except ValidationError:
             parsed_cur = None
     else:
         parsed_cur = None
-    
+ 
     if not Word.is_valid_sort_field(sort):
         return JSONResponse(
             {"detail": f"Invalid sort field. Possible values are {Word.valid_sort_fields}"}, 
-            status.HTTP_500_INTERNAL_SERVER_ERROR,
+            status.HTTP_400_BAD_REQUEST,
         )
 
     params = Params(
@@ -50,7 +50,7 @@ async def jar_words(
 
 @router.post("")
 async def add_word_to_jar(
-    userdata: Annotated[str, Depends(get_userdata)],
+    userdata: Annotated[str, Security(get_userdata_strict, scopes=["user", "admin"])],
     service: Annotated[JarService, Depends(get_jar_service)],
     word_data: AddJarWordRequest,
 ):
