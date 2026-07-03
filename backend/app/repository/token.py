@@ -17,3 +17,9 @@ class TokenStorage:
 
     async def get(self, key: str) -> str | None:
         return _data.get(key)
+    
+    async def delete(self, key: str) -> None:
+        try:
+            _data.pop(key)
+        except KeyError:
+            return

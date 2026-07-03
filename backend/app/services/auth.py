@@ -2,7 +2,7 @@ from logging import Logger
 from typing import Any, Protocol
 
 from core import config
-from core.errors import AlreadyExistsError, AuthError, InternalError
+from core.errors import AlreadyExistsError, AuthError, InternalError, InvalidToken
 from models.domain import Tokens, User, UserInfo
 
 from .helpers import *
@@ -20,6 +20,7 @@ class SecretRepository(Protocol):
 class TokenStorage(Protocol):
     async def store(self, key: str, value: Any, ttl: int) -> None: ...
     async def get(self, key: str) -> Any: ...
+    async def delete(self, key: str) -> None: ...
 
 
 class AuthService:
@@ -69,19 +70,7 @@ class AuthService:
         if not ok:
             raise AuthError("failed to verify password")
         
-        try:
-            key = await self._secret_repo.get_key()
-        except Exception as e:
-            self._log.error("failed to get sign key from secret repo: %s", e)
-            raise InternalError("internal error")
-
-        ss = create_access_token(self._jwt_cfg, key, user.username, user.role)
-        refresh = generate_refresh_token()
-
-        return Tokens(
-            access=ss,
-            refresh=refresh,
-        )
+        return await self._get_new_tokens(user)
 
     async def get_user_info(self, username: str) -> UserInfo | None:
         try:
@@ -114,3 +103,49 @@ class AuthService:
         except Exception as e:
             self._log.error("failed to store tokens: %s", e)
             raise InternalError("internal error")
+
+    async def get_new_tokens(self, refresh_token: str) -> Tokens:
+        username = await self._token_storage.get(refresh_token)
+        if not username:
+            raise InvalidToken("invalid refresh token")
+        
+        default_exc = InternalError("internal error")
+
+        try:
+            user = await self._user_repo.get(username)
+        except Exception as e:
+            self._log.error("failed to get user: %s", e)
+            raise default_exc
+
+        new_tokens = await self._get_new_tokens(user)
+
+        try:
+            await self._token_storage.delete(refresh_token)
+        except Exception as e:
+            self._log.error("failed to delete refresh_token for user(%s): %s", user.username, e)
+            raise default_exc
+
+        return new_tokens
+    
+    async def _get_new_tokens(self, user: User) -> Tokens:
+        default_exc = InternalError("internal error")
+
+        try:
+            key = await self._secret_repo.get_key()
+        except Exception as e:
+            self._log.error("failed to get sign key from secret repo: %s", e)
+            raise default_exc
+
+        ss = create_access_token(self._jwt_cfg, key, user.username, user.role)
+        refresh = generate_refresh_token()
+
+        try:
+            await self._token_storage.store(refresh, user.username, self._jwt_cfg.refresh_token_ttl)
+        except Exception as e:
+            self._log.error("failed to store refresh_token for user(%s): %s", user.username, e)
+            raise default_exc
+
+        return Tokens(
+            access=ss,
+            refresh=refresh,
+        )

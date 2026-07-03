@@ -1,14 +1,17 @@
 from typing import Annotated
 
-from api.deps import get_auth_service, get_userdata_strict
+from api.deps import get_auth_service, get_refresh_token, get_userdata_strict
 from api.v1.schemas import (
     AuthenticateRequest,
     CreateUserRequest,
     SuccessResponse,
+    TokensResponse,
     UserInfoResponse,
 )
-from fastapi import APIRouter, Depends
+from core.errors import InvalidToken
+from fastapi import APIRouter, Depends, status
 from fastapi.responses import JSONResponse
+from models.domain import Tokens
 from services.auth import AuthError, AuthService
 
 router = APIRouter(
@@ -32,7 +35,7 @@ async def create_user(
 async def authenticate_user(
     service: Annotated[AuthService, Depends(get_auth_service)],
     req: AuthenticateRequest,
-):
+) -> TokensResponse:
     try:
         tokens = await service.authenticate(req.username, req.password)
     except AuthError as e:
@@ -61,5 +64,18 @@ async def logout(
     try:
         await service.logout(userdata)
         return SuccessResponse()
-    except Exception as e:
+    except Exception:
+        return JSONResponse({"detail": "internal error"}, status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+@router.post("/refresh")
+async def refresh(
+    token: Annotated[str, Depends(get_refresh_token)],
+    service: Annotated[AuthService, Depends(get_auth_service)],
+) -> TokensResponse:
+    try:
+        return await service.get_new_tokens(token)
+    except InvalidToken as e:
         return JSONResponse({"detail": str(e)}, 400)
+    except Exception as e:
+        return JSONResponse({"detail": "internal error"}, status.HTTP_500_INTERNAL_SERVER_ERROR)
