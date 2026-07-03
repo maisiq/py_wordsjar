@@ -11,12 +11,11 @@ from services.pagination import Paginated, Params, decode_cursor, paginate
 from services.words import Word, WordService
 
 router = APIRouter(
-    prefix="/words",
     tags=["words"],
 )
 
 
-@router.get("")
+@router.get("/words")
 async def word_list(
     service: Annotated[WordService, Depends(get_word_service)],
     userdata: Annotated[Tokens | None, Security(get_userdata, scopes=[])],
@@ -53,7 +52,7 @@ async def word_list(
         return JSONResponse({"detail": "internal error"}, status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
-@router.post("")
+@router.post("/words")
 async def add_word_global(
     userdata: Annotated[str, Security(get_userdata_strict, scopes=["admin"])],
     service: Annotated[WordService, Depends(get_word_service)],
@@ -86,7 +85,7 @@ async def search(
         return JSONResponse({"detail": "internal error"}, status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
-@router.get("/{word}")
+@router.get("/words/{word}")
 async def get_word(
     service: Annotated[WordService, Depends(get_word_service)],
     word: str
