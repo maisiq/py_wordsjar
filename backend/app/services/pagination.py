@@ -19,6 +19,7 @@ class Params(BaseModel):
     sort: str | None = None
     desc: bool | None = None
     cursor: Cursor | None = None
+    username: str | None = None
 
 
 class Paginated(BaseModel, Generic[T]):
@@ -51,6 +52,7 @@ async def paginate(
         limit=limit,
         desc=params.desc,
         sort_by=params.sort,
+        username=params.username,
     )
 
     if params.cursor:

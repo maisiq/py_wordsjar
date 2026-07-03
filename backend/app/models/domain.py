@@ -12,11 +12,12 @@ class Word(BaseModel):
     transcription: str
     examples: list[str] | None = Field(default_factory=list)
 
-    valid_sort_fields: ClassVar[tuple[str]] = ("en", "id")
+    in_jar: bool = False
+    _valid_sort_fields: ClassVar[tuple[str]] = ("en", "id")
 
     @classmethod
     def is_valid_sort_field(cls, field: str) -> bool:
-        return field in cls.valid_sort_fields
+        return field in cls._valid_sort_fields
 
 
 class TestWord(Word):

@@ -84,11 +84,6 @@ async def get_exam_service(
 def get_access_token(
     x_auth_token: Annotated[str | None, Header()] = None,
 ):
-    if not x_auth_token:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Missing Auth Token",
-        )
     return x_auth_token
 
 
@@ -107,6 +102,9 @@ async def _get_userdata(
     x_refresh_token: Annotated[str | None, Depends(get_refresh_token)],
     cfg: Annotated[config.JWTSettings, Depends(get_jwt_settings)],
 ):
+    if not x_auth_token:
+        return
+
     if await storage.get(x_auth_token):
         return
 
@@ -132,53 +130,17 @@ async def _get_userdata(
 
 
 async def get_userdata_strict(
-    security_scopes: SecurityScopes,
-    repo: Annotated[SecretRepository, Depends(get_secret_repo)],
-    user_service: Annotated[AuthService, Depends(get_auth_service)],
-    storage: Annotated[TokenStorage, Depends(get_token_storage)],
-    x_auth_token: Annotated[str, Depends(get_access_token)],
-    x_refresh_token: Annotated[str | None, Depends(get_refresh_token)],
-    cfg: Annotated[config.JWTSettings, Depends(get_jwt_settings)],
+    userdata: Annotated[Tokens | None, Depends(_get_userdata)],
 ):
-    exc = HTTPException(
-        status_code=status.HTTP_401_UNAUTHORIZED,
-        detail="Invalid or Expired Token",
-    )
-
-    # Заголовок WWW-Authenticate: 
-    # Включите его для соответствия спецификации HTTP.
-    # WWW-Authenticate: Bearer realm="Access to the API", error="invalid_token", error_description="The token has expired"
-
-    if await storage.get(x_auth_token):
-        raise exc
-
-    sign_key = await repo.get_key()
-    try:
-        username = validate_access_token(cfg, sign_key, x_auth_token)
-    except errors.ExpiredTokenError:
-        exc.detail = {
-            "error": "token_expired",
-            "error_description": "The access token provided has expired. Please use the refresh token to obtain a new one.",
-            "status_code": 401,
-        }
-        raise exc
-    if not username:
-        raise exc
-    
-    user_info = await user_service.get_user_info(username)
-    if not user_info or (security_scopes.scopes and user_info.role not in security_scopes.scopes):
-        raise exc
-
-    user_data = Tokens(
-        username=username,
-        access=x_auth_token,
-        refresh=x_refresh_token,
-    )
-
-    return user_data
+    if userdata is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid or Expired Token",
+        )
+    return userdata
 
 
-async def get_userdata_(
-    data: Annotated[SecretRepository | None, Depends(_get_userdata)], 
+async def get_userdata(
+    data: Annotated[Tokens | None, Depends(_get_userdata)], 
 ):
     return data

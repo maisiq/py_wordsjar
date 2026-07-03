@@ -6,3 +6,4 @@ class QueryParams(BaseModel):
     sort_by: str | None = None
     desc: bool | None = None
     pointer: str = ""
+    username: str | None = None
