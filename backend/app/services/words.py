@@ -12,6 +12,7 @@ class Repository(Protocol):
     async def get_word(self, word: str): ...
     async def add_word(self, word: Word): ...
     async def words(self, params: QueryParams) -> list[Word]: ...
+    async def get_words_start_with(self, query: str, limit: int) -> list[Word]: ...
 
 
 class WordService:
@@ -43,3 +44,7 @@ class WordService:
     async def words(self, params: QueryParams) -> list[Word]:
         words = await self._repo.words(params)
         return words
+    
+    async def search(self, query: str, limit: int) -> list[str]:
+        query = query.strip().lower()
+        return await self._repo.get_words_start_with(query, limit)
