@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 class SuccessResponse(BaseModel):
@@ -20,6 +20,11 @@ class AuthenticateRequest(BaseModel):
 class UserInfoResponse(BaseModel):
     username: str
     role: str
+
+
+class TokensResponse(BaseModel):
+    access_token: str = Field(validation_alias="access")
+    refresh_token: str = Field(validation_alias="refresh")
 
 
 # exam
