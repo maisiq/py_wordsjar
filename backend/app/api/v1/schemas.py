@@ -52,3 +52,6 @@ class AddWordRequest(BaseModel):
     ru: list[str]
     transcription: str
 
+
+class SearchResponse(BaseModel):
+    items: list[str]

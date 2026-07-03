@@ -67,3 +67,8 @@ class WordRepository:
             word.in_jar = status
             words[idx] = word
         return words
+
+    async def get_words_start_with(self, query: str, limit: int) -> list[str]:
+        q = select(WordORM.en).where(WordORM.en.startswith(query)).limit(limit)
+        res = await self._session.execute(q)
+        return res.scalars().all()
