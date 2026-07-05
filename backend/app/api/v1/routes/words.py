@@ -1,6 +1,7 @@
 from typing import Annotated
 
 from api.deps import get_userdata, get_userdata_strict, get_word_service
+from api.v1.mappers import word_domain_to_api
 from api.v1.schemas import AddWordRequest, SearchResponse
 from core import errors
 from fastapi import APIRouter, Depends, Query, Security, status
@@ -35,7 +36,7 @@ async def word_list(
     if not Word.is_valid_sort_field(sort):
         return JSONResponse(
             {"detail": f"Invalid sort field. Possible values are {Word.valid_sort_fields}"}, 
-            status.HTTP_500_INTERNAL_SERVER_ERROR,
+            status.HTTP_400_BAD_REQUEST,
         )
 
     params = Params(
@@ -46,10 +47,7 @@ async def word_list(
     )
     if userdata:
         params.username = userdata.username
-    try:
-        return await paginate(params, service.words)
-    except (errors.InternalError, Exception):
-        return JSONResponse({"detail": "internal error"}, status.HTTP_500_INTERNAL_SERVER_ERROR)
+    return await paginate(params, service.words)
 
 
 @router.post("/words")
@@ -68,8 +66,6 @@ async def add_word_global(
         return JSONResponse({"status": "ok"})
     except errors.AlreadyExistsError as e:
         return JSONResponse({"detail": str(e)}, status.HTTP_400_BAD_REQUEST)
-    except (errors.InternalError, Exception):
-        return JSONResponse({"detail": "internal error"}, status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 @router.get("/search")
@@ -78,11 +74,8 @@ async def search(
     query: str = Query(min_length=2),
     limit: int = Query(10, alias="per_page"),
 ) -> SearchResponse:
-    try:
-        words = await service.search(query, limit)
-        return SearchResponse(items=words)
-    except (errors.InternalError, Exception):
-        return JSONResponse({"detail": "internal error"}, status.HTTP_500_INTERNAL_SERVER_ERROR)
+    words_domain = await service.search(query, limit)
+    return SearchResponse(items=[word_domain_to_api(w) for w in words_domain])
 
 
 @router.get("/words/{word}")
@@ -94,5 +87,3 @@ async def get_word(
         return await service.get_word(word)
     except errors.NotFound as e:
         return JSONResponse({"detail": str(e)}, status.HTTP_404_NOT_FOUND)
-    except (errors.InternalError, Exception):
-        return JSONResponse({"detail": "internal error"}, status.HTTP_500_INTERNAL_SERVER_ERROR)

@@ -35,10 +35,7 @@ async def test_user(
         limit=limit, 
         cursor=parsed_cur,
     )
-    try:
-        words = await paginate(params, lambda q: service.test_words(userdata.username, q))
-    except (errors.InternalError, Exception):
-        return JSONResponse({"detail": "internal error"}, status.HTTP_500_INTERNAL_SERVER_ERROR)
+    words = await paginate(params, lambda q: service.test_words(userdata.username, q))
     return words
 
 
@@ -50,8 +47,6 @@ async def verify_word(
 ):
     try:
         result = await service.verify_word(userdata.username, req.word_id, req.answer, req.reverse)
+        return JSONResponse({"result": result})
     except errors.NotFound as e:
         return JSONResponse({"detail": str(e)}, status.HTTP_404_NOT_FOUND)
-    except (errors.InternalError, Exception):
-        return JSONResponse({"detail": "internal error"}, status.HTTP_500_INTERNAL_SERVER_ERROR)
-    return JSONResponse({"result": result})

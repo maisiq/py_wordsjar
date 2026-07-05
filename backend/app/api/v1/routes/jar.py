@@ -54,8 +54,5 @@ async def add_word_to_jar(
     service: Annotated[JarService, Depends(get_jar_service)],
     word_data: AddJarWordRequest,
 ):
-    try:
-        await service.add_word(userdata.username, word_data.word_en, word_data.status)
-        return JSONResponse({"status": "ok"})
-    except Exception as e:
-        return JSONResponse({"detail": "internal error"}, 400)
+    await service.add_word(userdata.username, word_data.word_en, word_data.status)
+    return JSONResponse({"status": "ok"})
