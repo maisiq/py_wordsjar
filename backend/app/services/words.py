@@ -45,6 +45,10 @@ class WordService:
         words = await self._repo.words(params)
         return words
     
-    async def search(self, query: str, limit: int) -> list[str]:
+    async def search(self, query: str, limit: int) -> list[Word]:
         query = query.strip().lower()
-        return await self._repo.get_words_start_with(query, limit)
+        try:
+            return await self._repo.get_words_start_with(query, limit)
+        except Exception as e:
+            self._log.error("failed to get words by search quer(%s): %s", query, e)
+            raise InternalError("internal error")
