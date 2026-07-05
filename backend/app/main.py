@@ -1,4 +1,5 @@
 import logger
+from api.middleware.error import error_logger_middleware
 from api.v1.router import router
 from core import config
 from db.postgres import create_sessionmaker
@@ -25,6 +26,7 @@ def init():
         allow_methods=cors_settings.allow_methods,
         allow_headers=cors_settings.allow_headers,
     )
+    app.middleware("http")(error_logger_middleware)
 
     log.info("Creating connection pool to db")
     create_sessionmaker(db_settings.dsn, echo=app_settings.debug)

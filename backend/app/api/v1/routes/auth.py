@@ -8,7 +8,7 @@ from api.v1.schemas import (
     TokensResponse,
     UserInfoResponse,
 )
-from core.errors import InvalidToken
+from core.errors import AlreadyExistsError, InvalidToken
 from fastapi import APIRouter, Depends, status
 from fastapi.responses import JSONResponse
 from models.domain import Tokens
@@ -26,9 +26,9 @@ async def create_user(
 ):
     try:
         await service.create_user(req.username, req.password)
-        return JSONResponse({"status": "ok"})
-    except Exception as e:
-        return JSONResponse({"detail": str(e)}, 400)
+        return SuccessResponse()
+    except AlreadyExistsError as e:
+        return JSONResponse({"detail": str(e)}, status.HTTP_400_BAD_REQUEST)
 
 
 @router.post("/auth")
@@ -37,12 +37,9 @@ async def authenticate_user(
     req: AuthenticateRequest,
 ) -> TokensResponse:
     try:
-        tokens = await service.authenticate(req.username, req.password)
+        return await service.authenticate(req.username, req.password)
     except AuthError as e:
         return JSONResponse({"detail": str(e)}, 400)
-    except Exception:
-        return JSONResponse({"detail": "internal error"}, 500)
-    return tokens
 
 
 @router.get("/user/info")
@@ -61,11 +58,8 @@ async def logout(
     userdata: Annotated[str, Depends(get_userdata_strict)],
     service: Annotated[AuthService, Depends(get_auth_service)],
 ) -> SuccessResponse | None:
-    try:
-        await service.logout(userdata)
-        return SuccessResponse()
-    except Exception:
-        return JSONResponse({"detail": "internal error"}, status.HTTP_500_INTERNAL_SERVER_ERROR)
+    await service.logout(userdata)
+    return SuccessResponse()
 
 
 @router.post("/refresh")
@@ -77,5 +71,3 @@ async def refresh(
         return await service.get_new_tokens(token)
     except InvalidToken as e:
         return JSONResponse({"detail": str(e)}, 400)
-    except Exception as e:
-        return JSONResponse({"detail": "internal error"}, status.HTTP_500_INTERNAL_SERVER_ERROR)
