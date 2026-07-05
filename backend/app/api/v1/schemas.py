@@ -48,6 +48,14 @@ class AddJarWordRequest(BaseModel):
 
 # words
 
+class WordAPI(BaseModel):
+    en: str
+    ru: list[str]
+    transcription: str
+    examples: list[str] | None = Field(default_factory=list)
+    in_jar: bool
+
+
 class GetWordResponse(BaseModel):
     name: str
 
@@ -59,4 +67,4 @@ class AddWordRequest(BaseModel):
 
 
 class SearchResponse(BaseModel):
-    items: list[str]
+    items: list[WordAPI]

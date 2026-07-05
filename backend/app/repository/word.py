@@ -68,7 +68,7 @@ class WordRepository:
             words[idx] = word
         return words
 
-    async def get_words_start_with(self, query: str, limit: int) -> list[str]:
-        q = select(WordORM.en).where(WordORM.en.startswith(query)).limit(limit)
+    async def get_words_start_with(self, query: str, limit: int) -> list[Word]:
+        q = select(WordORM).where(WordORM.en.startswith(query)).limit(limit)
         res = await self._session.execute(q)
-        return res.scalars().all()
+        return [word_orm_to_domain(w) for w in res.scalars().all()]
