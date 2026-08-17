@@ -74,7 +74,31 @@ class WordRepository:
             words[idx] = word
         return words
 
-    async def get_words_start_with(self, query: str, limit: int) -> list[Word]:
-        q = select(WordORM).where(WordORM.en.startswith(query)).limit(limit)
+    async def get_words_start_with(self, query: str, limit: int, user: str | None = None) -> list[Word]:
+        if user:
+            user_id_subq = select(UserORM.id).where(UserORM.username == user).scalar_subquery()
+            q = (
+                select(WordORM, (UserWordORM.user_id.is_not(None)).label("in_jar"))
+                .outerjoin(
+                    UserWordORM, 
+                    and_(
+                        UserWordORM.word_id == WordORM.id,
+                        UserWordORM.user_id == user_id_subq,
+                    )
+                )
+            )
+        else:
+            q = select(WordORM, literal(False).label("in_jar"))
+
+        q = q.where(WordORM.en.startswith(query)).limit(limit)
+
         res = await self._session.execute(q)
-        return [word_orm_to_domain(w) for w in res.scalars().all()]
+        word_objs = res.tuples().all()
+
+        words: list[Word] = [None]*len(word_objs)
+        for idx, word_and_status in enumerate(word_objs):
+            w, status = word_and_status
+            word = word_orm_to_domain(w)
+            word.in_jar = status
+            words[idx] = word
+        return words

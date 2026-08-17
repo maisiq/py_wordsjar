@@ -70,18 +70,20 @@ async def add_word_global(
 
 @router.get("/search")
 async def search(
+    userdata: Annotated[Tokens | None, Security(get_userdata, scopes=[])],
     service: Annotated[WordService, Depends(get_word_service)],
     query: str = Query(min_length=2),
     limit: int = Query(10, alias="per_page"),
 ) -> SearchResponse:
-    words_domain = await service.search(query, limit)
+    user = userdata.username if userdata else None
+    words_domain = await service.search(query, limit, user)
     return SearchResponse(items=[word_domain_to_api(w) for w in words_domain])
 
 
 @router.get("/words/{word}")
 async def get_word(
     service: Annotated[WordService, Depends(get_word_service)],
-    word: str
+    word: str,
 ) -> Word:
     try:
         return await service.get_word(word)
