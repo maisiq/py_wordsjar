@@ -4,7 +4,7 @@ from models.orm import UserORM, UserWordORM, WordORM
 from psycopg.errors import UniqueViolation
 from repository.params import QueryParams
 from services.words import Word
-from sqlalchemy import literal, select
+from sqlalchemy import and_, literal, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -41,10 +41,16 @@ class WordRepository:
         order_by = order_by_field.desc() if params.desc else order_by_field.asc()
 
         if params.username:
+            user_id_subq = select(UserORM.id).where(UserORM.username == params.username).scalar_subquery()
             query = (
                 select(WordORM, (UserWordORM.user_id.is_not(None)).label("in_jar"))
-                .outerjoin(UserWordORM, UserWordORM.word_id == WordORM.id)
-                .outerjoin(UserWordORM.user.and_(UserORM.username == params.username))
+                .outerjoin(
+                    UserWordORM, 
+                    and_(
+                        UserWordORM.word_id == WordORM.id,
+                        UserWordORM.user_id == user_id_subq,
+                    )
+                )
             )
         else:
             query = select(WordORM, literal(False).label("in_jar"))
