@@ -12,7 +12,7 @@ class Repository(Protocol):
     async def get_word(self, word: str): ...
     async def add_word(self, word: Word): ...
     async def words(self, params: QueryParams) -> list[Word]: ...
-    async def get_words_start_with(self, query: str, limit: int) -> list[Word]: ...
+    async def get_words_start_with(self, query: str, limit: int, user: str | None = None) -> list[Word]: ...
 
 
 class WordService:
@@ -44,11 +44,11 @@ class WordService:
     async def words(self, params: QueryParams) -> list[Word]:
         words = await self._repo.words(params)
         return words
-    
-    async def search(self, query: str, limit: int) -> list[Word]:
+
+    async def search(self, query: str, limit: int, user: str | None = None) -> list[Word]:
         query = query.strip().lower()
         try:
-            return await self._repo.get_words_start_with(query, limit)
+            return await self._repo.get_words_start_with(query, limit, user)
         except Exception as e:
             self._log.error("failed to get words by search quer(%s): %s", query, e)
             raise InternalError("internal error")
