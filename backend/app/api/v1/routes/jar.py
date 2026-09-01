@@ -54,5 +54,5 @@ async def add_word_to_jar(
     service: Annotated[JarService, Depends(get_jar_service)],
     word_data: AddJarWordRequest,
 ):
-    await service.add_word(userdata.username, word_data.word_en, word_data.status)
+    await service.add_words(userdata.username, word_data.words_en, word_data.status)
     return JSONResponse({"status": "ok"})
