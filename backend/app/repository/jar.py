@@ -15,7 +15,7 @@ class JarRepository:
     def __init__(self, session: AsyncSession):
         self._session = session
     
-    async def add_word(self, username: str, word: str, rating: float):
+    async def add_words(self, username: str, words: list[str], rating: float):
         res = await self._session.execute(
             select(UserORM.id)
             .where(UserORM.username == username)
@@ -24,25 +24,34 @@ class JarRepository:
         if user_id is None:
             raise Exception("user not exists")
 
-        res = await self._session.execute(select(WordORM.id).where(WordORM.en == word))
-        word_id = res.scalar_one_or_none()
-        if word_id is None:
+        res = await self._session.execute(select(WordORM.id).where(WordORM.en.in_(words)))
+        word_ids = res.scalars().all()
+        if not word_ids:
             raise Exception("word not exists")
+
+        last_attempt = dt.datetime.now(dt.UTC) - dt.timedelta(days=1)
+
+        data_to_insert = [None]*len(word_ids)
+        for idx, word_id in enumerate(word_ids):
+            data_to_insert[idx] = {
+                "user_id": user_id,
+                "word_id": word_id,
+                "rating": rating,
+                "last_attempt": last_attempt,
+            }
 
         stmt = (
             insert(UserWordORM)
-            .values(
-                user_id=user_id,
-                word_id=word_id,
-                rating=rating,
-                last_attempt=dt.datetime.now(dt.UTC) - dt.timedelta(days=1),
-            )
             .on_conflict_do_nothing(index_elements=["user_id", "word_id"])
+            .returning(UserWordORM.word_id)
         )
 
         try:
-            await self._session.execute(stmt)
+            res = await self._session.execute(stmt, data_to_insert)
             await self._session.commit()
+
+            inserted_rows = res.all()
+            return len(inserted_rows)
         except IntegrityError as e:
             raise AlreadyExistsError("word already added to jar")
 

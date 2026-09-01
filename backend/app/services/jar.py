@@ -8,7 +8,7 @@ from repository.params import QueryParams
 
 
 class Repository(Protocol):
-    async def add_word(self, username: str, word: str, rating: float): ...
+    async def add_words(self, username: str, words: list[str], rating: float): ...
     async def words(self, username: str, params: QueryParams) -> list[Word]: ...
 
 
@@ -30,7 +30,7 @@ class JarService:
             self._log.error("failed to get word list: %s | error_type: %s", e, type(e))
             raise InternalError()
 
-    async def add_word(self, username: str, word: str, status: Status):
+    async def add_words(self, username: str, words: list[str], status: Status):
         match status:
             case Status.MEDIUM:
                 rating = 2.5
@@ -39,9 +39,9 @@ class JarService:
             case _:
                 rating = 0.0
         try:
-            await self._repo.add_word(username, word, rating)
+            await self._repo.add_words(username, words, rating)
         except AlreadyExistsError:
             raise
         except Exception as e:
-            self._log.error("failed to add word (%s) to jar: %s | error_type: %s", word, e, type(e))
+            self._log.error("failed to add word (%s) to jar: %s | error_type: %s", words, e, type(e))
             raise InternalError()

@@ -42,7 +42,7 @@ class VerifyWordRequest(BaseModel):
 #  jar
 
 class AddJarWordRequest(BaseModel):
-    word_en: str
+    words_en: list[str]
     status: str | None = None
 
 
