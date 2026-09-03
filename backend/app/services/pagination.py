@@ -16,7 +16,7 @@ class Cursor(BaseModel):
 
 class Params(BaseModel):
     limit: int = Field(default=10, lt=101)
-    sort: str | None = None
+    sort: list[str] = Field(default_factory=list)
     desc: bool | None = None
     cursor: Cursor | None = None
     username: str | None = None
@@ -37,8 +37,8 @@ def encode_cursor(cur: Cursor) -> str:
 
 
 def decode_cursor(cur: str) -> Cursor:
-    json_str = base64.urlsafe_b64decode(cur)
-    return Cursor.model_validate_json(json_str)
+    json_bytes = base64.urlsafe_b64decode(cur)
+    return Cursor.model_validate_json(json_bytes)
 
 
 async def paginate(
@@ -59,19 +59,19 @@ async def paginate(
         if not params.cursor.next:
             backward = True
 
-        query_params.sort_by = params.cursor.field
+        query_params.sort_by = params.cursor.field.split(",")
         if backward:
             query_params.desc = not params.cursor.desc
         else:
             query_params.desc = params.cursor.desc
-        query_params.pointer = params.cursor.value
+        query_params.pointer = params.cursor.value.split(",")
 
     items = await fn(query_params)
 
     if backward:
         items.sort(
-            key=lambda item: getattr(item, params.cursor.field),
-            reverse=params.cursor.desc,
+            key=lambda item: tuple(getattr(item, f) for f in query_params.sort_by),
+            reverse=query_params.desc,
         )
 
     has_next = False
@@ -92,7 +92,10 @@ async def paginate(
     
     pi = Paginated(items=items)
 
-    cur = params.cursor or Cursor(field="en", desc=params.desc, value="", next=True)
+    cur = params.cursor or Cursor(field=",".join(query_params.sort_by), desc=params.desc, value="", next=True)
+
+    def get_cursor_value(item):
+        return ",".join(str(getattr(item, f)) for f in query_params.sort_by)
 
     if has_next:
         pi.has_next = True
@@ -100,23 +103,23 @@ async def paginate(
 
         if backward and len(items) <= params.limit:
             if len(items) > 0:
-                cur.value = getattr(pi.items[-1], cur.field)
+                cur.value = get_cursor_value(pi.items[-1])
                 pi.next_cursor = encode_cursor(cur)
         elif backward:
             pi.items = items[1:params.limit+1]
-            cur.value = getattr(pi.items[-1], cur.field)
+            cur.value = get_cursor_value(pi.items[-1])
             pi.next_cursor = encode_cursor(cur)
         else:
             pi.items = items[:params.limit]
-            cur.value = getattr(pi.items[-1], cur.field)
+            cur.value = get_cursor_value(pi.items[-1])
             pi.next_cursor = encode_cursor(cur)
 
     if has_prev:
         pi.has_prev = True
         cur.next = False
         if backward:
-            cur.value = getattr(pi.items[0], cur.field)
+            cur.value = get_cursor_value(pi.items[0])
         else:
-            cur.value = getattr(pi.items[0], cur.field)
+            cur.value = get_cursor_value(pi.items[0])
         pi.prev_cursor = encode_cursor(cur)
     return pi

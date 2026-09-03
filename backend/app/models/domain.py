@@ -19,9 +19,18 @@ class Word(BaseModel):
     def is_valid_sort_field(cls, field: str) -> bool:
         return field in cls._valid_sort_fields
 
+    @property
+    def valid_sort_fields(self):
+        return self._valid_sort_fields
+
 
 class TestWord(Word):
     reverse: bool = False
+
+
+class JarWord(Word):
+    rating: float
+    _valid_sort_fields: ClassVar[tuple[str]] = ("en", "id", "rating")
 
 
 class UserWord(BaseModel):
@@ -51,5 +60,6 @@ class UserInfo(BaseModel):
 
 
 class Roles(StrEnum):
+    ANY = "any"
     USER = "user"
     ADMIN = "admin"

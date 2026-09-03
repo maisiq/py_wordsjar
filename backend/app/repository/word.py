@@ -4,7 +4,7 @@ from models.orm import UserORM, UserWordORM, WordORM
 from psycopg.errors import UniqueViolation
 from repository.params import QueryParams
 from services.words import Word
-from sqlalchemy import and_, literal, select
+from sqlalchemy import and_, literal, select, tuple_
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -37,8 +37,17 @@ class WordRepository:
             raise AlreadyExistsError("word already exists")
 
     async def words(self, params: QueryParams) -> list[Word]: 
-        order_by_field = getattr(WordORM, params.sort_by)
-        order_by = order_by_field.desc() if params.desc else order_by_field.asc()
+        order_fields = []
+        for f in params.sort_by:
+            field = getattr(WordORM, f, None) or getattr(UserWordORM, f, None)
+
+            if field is not None:
+                order_fields.append(field)
+
+        order_by = [
+            f.desc() if params.desc else f.asc()
+            for f in order_fields
+        ]
 
         if params.username:
             user_id_subq = select(UserORM.id).where(UserORM.username == params.username).scalar_subquery()
@@ -55,13 +64,19 @@ class WordRepository:
         else:
             query = select(WordORM, literal(False).label("in_jar"))
 
-        query = query.limit(params.limit).order_by(order_by)
+        query = query.limit(params.limit).order_by(*order_by)
 
         if params.pointer:
+            values = []
+            for idx, field in enumerate(order_fields):
+                factory = field.expression.type.python_type
+                value = factory(params.pointer[idx])
+                values.append(value)
+
             if params.desc:
-                query = query.where(order_by_field < params.pointer)
+                query = query.where(tuple_(*order_fields) < values)
             else:
-                query = query.where(order_by_field > params.pointer)
+                query = query.where(tuple_(*order_fields) > values)
 
         res = await self._session.execute(query)
         word_objs = res.tuples().all()

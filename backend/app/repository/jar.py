@@ -1,11 +1,11 @@
 import datetime as dt
 
 from core.errors import AlreadyExistsError
-from models.domain import UserWord, Word
-from models.mappers import word_orm_to_domain
+from models.domain import JarWord, UserWord, Word
+from models.mappers import create_jar_word, word_orm_to_domain
 from models.orm import UserORM, UserWordORM, WordORM
 from repository.params import QueryParams
-from sqlalchemy import select, update
+from sqlalchemy import select, tuple_, update
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -119,7 +119,7 @@ class JarRepository:
         ts = dt.datetime.now() - dt.timedelta(days=1)
 
         query = query.where(
-            UserWordORM.rating < 5.0, 
+            UserWordORM.rating <= 5.0,
             UserWordORM.last_attempt < ts,
         ).order_by(UserWordORM.rating, UserWordORM.last_attempt)
         
@@ -132,29 +132,45 @@ class JarRepository:
         return words
 
 
-    async def words(self, username: str, params: QueryParams) -> list[Word]:
+    async def words(self, username: str, params: QueryParams) -> list[JarWord]:
         query = (
-            select(WordORM)
+            select(WordORM, UserWordORM.rating)
             .join(UserWordORM, WordORM.id == UserWordORM.word_id)
             .join(UserORM, UserORM.id == UserWordORM.user_id)
             .where(UserORM.username == username)
             .limit(params.limit)
         )
 
-        order_by_field = getattr(WordORM, params.sort_by)
-        order_by = order_by_field.desc() if params.desc else order_by_field.asc()
-        query = query.order_by(order_by)
+        order_fields = []
+        for f in params.sort_by:
+            field = getattr(WordORM, f, None) or getattr(UserWordORM, f, None)
+
+            if field is not None:
+                order_fields.append(field)
+
+        order_by = [
+            f.desc() if params.desc else f.asc()
+            for f in order_fields
+        ]
+
+        query = query.order_by(*order_by)
 
         if params.pointer:
+            values = []
+            for idx, field in enumerate(order_fields):
+                factory = field.expression.type.python_type
+                value = factory(params.pointer[idx])
+                values.append(value)
+
             if params.desc:
-                query = query.where(order_by_field < params.pointer)
+                query = query.where(tuple_(*order_fields) < values)
             else:
-                query = query.where(order_by_field > params.pointer)
+                query = query.where(tuple_(*order_fields) > values)
 
         res = await self._session.execute(query)
-        words_orm = res.scalars().all()
+        words_orm = res.tuples().all()
 
         words = [None]*len(words_orm)
-        for i, word in enumerate(words_orm):
-            words[i] = word_orm_to_domain(word)
+        for i, (word, rating) in enumerate(words_orm):
+            words[i] = create_jar_word(word, rating)
         return words
