@@ -8,8 +8,9 @@ from repository.params import QueryParams
 
 
 class Repository(Protocol):
-    async def add_words(self, username: str, words: list[str], rating: float): ...
+    async def add_words(self, username: str, words: list[str], rating: float) -> None: ...
     async def words(self, username: str, params: QueryParams) -> list[Word]: ...
+    async def delete(self, username: str, word: str) -> None: ...
 
 
 class Status(StrEnum):
@@ -45,3 +46,6 @@ class JarService:
         except Exception as e:
             self._log.error("failed to add word (%s) to jar: %s | error_type: %s", words, e, type(e))
             raise InternalError()
+
+    async def delete_word(self, username: str, word: str) -> None:
+        await self._repo.delete(username, word)

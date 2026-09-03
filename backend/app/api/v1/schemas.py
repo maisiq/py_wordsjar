@@ -46,6 +46,9 @@ class AddJarWordRequest(BaseModel):
     status: str | None = None
 
 
+class DeleteJarWordRequest(BaseModel):
+    word: str
+
 # words
 
 class WordAPI(BaseModel):

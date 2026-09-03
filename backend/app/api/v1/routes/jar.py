@@ -1,7 +1,7 @@
 from typing import Annotated
 
 from api.deps import get_jar_service, get_userdata_strict
-from api.v1.schemas import AddJarWordRequest
+from api.v1.schemas import AddJarWordRequest, DeleteJarWordRequest
 from fastapi import APIRouter, Depends, Query, Security, status
 from fastapi.responses import JSONResponse
 from models.domain import JarWord, Word
@@ -57,4 +57,14 @@ async def add_word_to_jar(
     word_data: AddJarWordRequest,
 ):
     await service.add_words(userdata.username, word_data.words_en, word_data.status)
+    return JSONResponse({"status": "ok"})
+
+
+@router.delete("")
+async def delete_word_from_jar(
+    userdata: Annotated[str, Security(get_userdata_strict, scopes=["user", "admin"])],
+    service: Annotated[JarService, Depends(get_jar_service)],
+    payload: DeleteJarWordRequest,
+):
+    await service.delete_word(userdata.username, payload.word)
     return JSONResponse({"status": "ok"})
