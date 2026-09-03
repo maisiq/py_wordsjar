@@ -33,14 +33,16 @@ async def word_list(
     else:
         parsed_cur = None
 
-    if not Word.is_valid_sort_field(sort):
-        return JSONResponse(
-            {"detail": f"Invalid sort field. Possible values are {Word.valid_sort_fields}"}, 
-            status.HTTP_400_BAD_REQUEST,
-        )
+    sort_fields = sort.split(",")
+    for field in sort_fields:
+        if not Word.is_valid_sort_field(field):
+            return JSONResponse(
+                {"detail": f"Invalid sort field ({field}). Possible values are {Word.valid_sort_fields}"}, 
+                status.HTTP_400_BAD_REQUEST,
+            )
 
     params = Params(
-        sort=sort,
+        sort=sort_fields,
         desc=desc,
         limit=limit,
         cursor=parsed_cur,

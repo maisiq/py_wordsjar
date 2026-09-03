@@ -4,7 +4,7 @@ from api.deps import get_jar_service, get_userdata_strict
 from api.v1.schemas import AddJarWordRequest
 from fastapi import APIRouter, Depends, Query, Security, status
 from fastapi.responses import JSONResponse
-from models.domain import Word
+from models.domain import JarWord, Word
 from pydantic import ValidationError
 from services.jar import JarService
 from services.pagination import Paginated, Params, decode_cursor, paginate
@@ -19,7 +19,7 @@ router = APIRouter(
 async def jar_words(
     userdata: Annotated[str, Security(get_userdata_strict, scopes=["user", "admin"])],
     service: Annotated[JarService, Depends(get_jar_service)],
-    sort: str = Query("en", alias="order_by", min_length=1),
+    sort: str = Query("rating,id", alias="order_by", min_length=1),
     desc: bool = Query(False),
     limit: int = Query(10, alias="per_page"), 
     cursor: str | None = None,
@@ -31,17 +31,19 @@ async def jar_words(
             parsed_cur = None
     else:
         parsed_cur = None
- 
-    if not Word.is_valid_sort_field(sort):
-        return JSONResponse(
-            {"detail": f"Invalid sort field. Possible values are {Word.valid_sort_fields}"}, 
-            status.HTTP_400_BAD_REQUEST,
-        )
+
+    sort_fields = sort.split(",")
+    for field in sort_fields:
+        if not JarWord.is_valid_sort_field(field):
+            return JSONResponse(
+                {"detail": f"Invalid sort field ({field}). Possible values are {JarWord.valid_sort_fields}"}, 
+                status.HTTP_400_BAD_REQUEST,
+            )
 
     params = Params(
         limit=limit,
         desc=desc,
-        sort=sort,
+        sort=sort_fields,
         cursor=parsed_cur,
     )
     words = await paginate(params, lambda q: service.words(userdata.username, q))
