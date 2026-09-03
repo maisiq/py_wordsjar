@@ -49,6 +49,11 @@ class AddJarWordRequest(BaseModel):
 class DeleteJarWordRequest(BaseModel):
     word: str
 
+
+class AddWordsToJarResponse(BaseModel):
+    count: int
+
+
 # words
 
 class WordAPI(BaseModel):

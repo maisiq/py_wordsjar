@@ -1,20 +1,18 @@
 import datetime as dt
 
-from core.errors import AlreadyExistsError
 from models.domain import JarWord, UserWord, Word
 from models.mappers import create_jar_word, word_orm_to_domain
 from models.orm import UserORM, UserWordORM, WordORM
 from repository.params import QueryParams
 from sqlalchemy import delete, select, tuple_, update
 from sqlalchemy.dialects.postgresql import insert
-from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 
 class JarRepository:
     def __init__(self, session: AsyncSession):
         self._session = session
-    
+
     async def add_words(self, username: str, words: list[str], rating: float):
         res = await self._session.execute(
             select(UserORM.id)
@@ -46,14 +44,11 @@ class JarRepository:
             .returning(UserWordORM.word_id)
         )
 
-        try:
-            res = await self._session.execute(stmt, data_to_insert)
-            await self._session.commit()
+        res = await self._session.execute(stmt, data_to_insert)
+        await self._session.commit()
 
-            inserted_rows = res.all()
-            return len(inserted_rows)
-        except IntegrityError as e:
-            raise AlreadyExistsError("word already added to jar")
+        inserted_rows = res.all()
+        return len(inserted_rows)
 
     async def get_word_by_id(self, word_id: str) -> Word | None:
         query = select(WordORM).where(WordORM.id == word_id)
@@ -122,7 +117,7 @@ class JarRepository:
             UserWordORM.rating <= 5.0,
             UserWordORM.last_attempt < ts,
         ).order_by(UserWordORM.rating, UserWordORM.last_attempt)
-        
+
         res = await self._session.execute(query)
         words_orm = res.scalars().all()
 
@@ -130,7 +125,6 @@ class JarRepository:
         for i, word in enumerate(words_orm):
             words[i] = word_orm_to_domain(word)
         return words
-
 
     async def words(self, username: str, params: QueryParams) -> list[JarWord]:
         query = (

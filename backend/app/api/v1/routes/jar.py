@@ -1,7 +1,11 @@
 from typing import Annotated
 
 from api.deps import get_jar_service, get_userdata_strict
-from api.v1.schemas import AddJarWordRequest, DeleteJarWordRequest
+from api.v1.schemas import (
+    AddJarWordRequest,
+    AddWordsToJarResponse,
+    DeleteJarWordRequest,
+)
 from fastapi import APIRouter, Depends, Query, Security, status
 from fastapi.responses import JSONResponse
 from models.domain import JarWord, Word
@@ -21,7 +25,7 @@ async def jar_words(
     service: Annotated[JarService, Depends(get_jar_service)],
     sort: str = Query("rating,id", alias="order_by", min_length=1),
     desc: bool = Query(False),
-    limit: int = Query(10, alias="per_page"), 
+    limit: int = Query(10, alias="per_page"),
     cursor: str | None = None,
 ) -> Paginated[Word]:
     if cursor:
@@ -51,13 +55,13 @@ async def jar_words(
 
 
 @router.post("")
-async def add_word_to_jar(
+async def add_words_to_jar(
     userdata: Annotated[str, Security(get_userdata_strict, scopes=["user", "admin"])],
     service: Annotated[JarService, Depends(get_jar_service)],
     word_data: AddJarWordRequest,
 ):
-    await service.add_words(userdata.username, word_data.words_en, word_data.status)
-    return JSONResponse({"status": "ok"})
+    result = await service.add_words(userdata.username, word_data.words_en, word_data.status)
+    return AddWordsToJarResponse(count=result)
 
 
 @router.delete("")

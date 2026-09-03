@@ -8,7 +8,7 @@ from repository.params import QueryParams
 
 
 class Repository(Protocol):
-    async def add_words(self, username: str, words: list[str], rating: float) -> None: ...
+    async def add_words(self, username: str, words: list[str], rating: float) -> int: ...
     async def words(self, username: str, params: QueryParams) -> list[Word]: ...
     async def delete(self, username: str, word: str) -> None: ...
 
@@ -23,7 +23,7 @@ class JarService:
     def __init__(self, log: Logger, repo: Repository):
         self._log = log
         self._repo = repo
-    
+
     async def words(self, username: str, params: QueryParams) -> list[Word]:
         try:
             return await self._repo.words(username, params)
@@ -40,7 +40,7 @@ class JarService:
             case _:
                 rating = 0.0
         try:
-            await self._repo.add_words(username, words, rating)
+            return await self._repo.add_words(username, words, rating)
         except AlreadyExistsError:
             raise
         except Exception as e:
