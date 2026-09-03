@@ -5,7 +5,7 @@ from models.domain import JarWord, UserWord, Word
 from models.mappers import create_jar_word, word_orm_to_domain
 from models.orm import UserORM, UserWordORM, WordORM
 from repository.params import QueryParams
-from sqlalchemy import select, tuple_, update
+from sqlalchemy import delete, select, tuple_, update
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -174,3 +174,14 @@ class JarRepository:
         for i, (word, rating) in enumerate(words_orm):
             words[i] = create_jar_word(word, rating)
         return words
+
+    async def delete(self, username: str, word: str) -> None:
+        stmt = (
+            delete(UserWordORM)
+            .where(
+                UserWordORM.user.has(UserORM.username == username),
+                UserWordORM.word.has(WordORM.en == word),
+            )
+        )
+        await self._session.execute(stmt)
+        await self._session.commit()
