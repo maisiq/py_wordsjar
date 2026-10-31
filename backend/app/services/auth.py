@@ -90,9 +90,6 @@ class AuthService:
         user = await self._get_user(username)
         if user is None:
             return None
-        user = await self._get_user(username)
-        if user is None:
-            return None
 
         return UserInfo(
             username=user.username,
@@ -104,10 +101,8 @@ class AuthService:
 
     async def logout(self, tokens: Tokens) -> None:
         """Revoke the access token until it expires and drop the refresh session."""
-        """Revoke the access token until it expires and drop the refresh session."""
         try:
             if tokens.access:
-                await self._revoke_access_token(tokens.access, tokens.username)
                 await self._revoke_access_token(tokens.access, tokens.username)
             if tokens.refresh:
                 await self._token_storage.consume(tokens.refresh)
@@ -188,14 +183,11 @@ class AuthService:
                 user_id=user.id,
                 ttl=self._jwt_cfg.refresh_token_ttl,
             )
-
         except Exception as e:
             self._log.error("failed to store refresh token for user(%s): %s", user.username, e)
             raise InternalError("failed to issue tokens")
 
         return Tokens(
-            username=user.username,
-            access=access,
             username=user.username,
             access=access,
             refresh=refresh,

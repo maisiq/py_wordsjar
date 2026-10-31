@@ -1,6 +1,5 @@
-from pydantic import BaseModel, Field
-
 from models.domain import Status
+from pydantic import BaseModel, Field
 
 #: Usernames end up in logs and in the ``sub`` claim, so keep them boring.
 USERNAME_PATTERN = r"^[A-Za-z0-9_.-]{3,32}$"
