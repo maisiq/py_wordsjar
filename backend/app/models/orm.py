@@ -27,8 +27,15 @@ class UserWordORM(Base):
     word_id: Mapped[int] = mapped_column("word_id", ForeignKey("words.id"), primary_key=True)
     rating: Mapped[float] = mapped_column("rating", Float(), default=0.0)
     attempts: Mapped[int] = mapped_column("attempts", Integer(), default=0)
-    last_attempt: Mapped[datetime] = mapped_column("last_attempt", DateTime(), server_default=text("NOW() - INTERVAL '1 day'"))
-    created_at: Mapped[datetime] = mapped_column("created_at", DateTime(), server_default="NOW()")
+    last_attempt: Mapped[datetime] = mapped_column(
+        "last_attempt",
+        DateTime(timezone=True),
+        server_default=text("now() - interval '1 day'"),
+    )
+    # A constant default froze every row at the moment the migration ran.
+    created_at: Mapped[datetime] = mapped_column(
+        "created_at", DateTime(timezone=True), server_default=text("now()")
+    )
 
     user: Mapped["UserORM"] = relationship("UserORM", viewonly=True)
     word: Mapped["WordORM"] = relationship("WordORM", viewonly=True)

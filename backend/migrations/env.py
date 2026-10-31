@@ -7,7 +7,7 @@ from app.models.orm import Base
 from dotenv import load_dotenv
 from sqlalchemy import engine_from_config, pool
 
-BASE_DIR = Path(__name__).parent.parent
+BASE_DIR = Path(__file__).resolve().parent.parent
 
 load_dotenv(BASE_DIR / "app" / ".env")
 

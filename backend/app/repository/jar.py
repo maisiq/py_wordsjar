@@ -116,7 +116,7 @@ class JarRepository:
         makes "this word is due" part of the same atomic step: a row comes back
         only when the answer was actually applied.
         """
-        now = dt.datetime.now(dt.UTC).replace(tzinfo=None)
+        now = dt.datetime.now(dt.UTC)
         cutoff = now - COOLDOWN
 
         if correct:
@@ -155,9 +155,10 @@ class JarRepository:
         order_fields = resolve_columns(SORT_COLUMNS, params.sort_by or ["rating", "last_attempt"])
         order_by = [f.desc() if params.desc else f.asc() for f in order_fields]
 
-        # ``last_attempt`` is written as naive UTC (see add_words), so the
-        # cutoff has to be naive UTC as well; now() is local time on the server.
-        cutoff = dt.datetime.now(dt.UTC).replace(tzinfo=None) - COOLDOWN
+        # ``last_attempt`` is a timestamptz column, so the cutoff is a timezone aware
+        # UTC timestamp; comparing it to a naive local now() was off by the
+        # server's offset.
+        cutoff = dt.datetime.now(dt.UTC) - COOLDOWN
 
     async def test_words(self, username: str, params: QueryParams) -> list[TestWord]:
         order_fields = resolve_columns(SORT_COLUMNS, params.sort_by or ["rating", "last_attempt"])
