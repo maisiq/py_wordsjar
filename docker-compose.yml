@@ -1,0 +1,32 @@
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: wordsjar-backend
+    restart: unless-stopped
+    network_mode: host
+    env_file:
+      - .env
+    environment:
+      # Для явного указания, если нужно переопределить
+      WORDSJAR_BACKEND_DB_DSN: "${WORDSJAR_BACKEND_DB_DSN}"
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        # Сборка с localhost намеренно падает — см. frontend/vite.config.js
+        VITE_API_BASE_URL: "${VITE_API_BASE_URL:-/api/v1}"
+    container_name: wordsjar-frontend
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    extra_hosts:
+      # Бэкенд живёт в network_mode: host, поэтому nginx обращается к нему
+      # через хост. На Linux host-gateway обязателен, на Docker Desktop
+      # host.docker.internal есть по умолчанию.
+      - "host.docker.internal:host-gateway"
+    depends_on:
+      - backend

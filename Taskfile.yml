@@ -1,0 +1,28 @@
+# yaml-language-server: $schema=https://taskfile.dev/schema.json
+
+version: '3'
+
+vars:
+  GREETING: Hello, world!
+
+tasks:
+  van:
+    desc: Start frontend server
+    cmds:
+      - cd web && npx rollup -c
+      - python -m http.server -b frontend.local.test -d ./web 3000
+    silent: false
+  back:
+    desc: Start backend server
+    cmds:
+      - cd backend/app && ../.venv/Scripts/python.exe -m uvicorn --reload --host 0.0.0.0 --port 8080 --factory main:init
+    silent: false
+  react:
+    desc: Start react server
+    cmds:
+      - cd frontend && npm run dev
+    silent: false
+  run:
+    deps:
+      - back
+      - react
