@@ -39,6 +39,17 @@ class AlreadyExistsError(AppError):
     message = "already exists"
 
 
+class NotDue(AppError):
+    """The resource exists, but not in the state an action requires.
+
+    Used by the exam: a word can be answered again only after its cooldown.
+    """
+
+    status_code = 409
+    code = "not_due"
+    message = "not due yet"
+
+
 class AuthError(AppError):
     status_code = 401
     code = "invalid_credentials"
