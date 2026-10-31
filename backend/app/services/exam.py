@@ -27,6 +27,8 @@ class ExamService:
             words = await self._repo.test_words(username, params)
         except AppError:
             raise
+        except AppError:
+            raise
         except Exception as e:
             self._log.error("failed to get test words for user(%s): %s", username, e)
             raise InternalError("failed to get the exam queue")
