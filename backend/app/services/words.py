@@ -22,7 +22,7 @@ class WordService:
 
     async def get_word(self, word: str) -> Word:
         try:
-            return await self._repo.get_word(word)
+            return await self._repo.get_word(normalize_word(word))
         except AppError:
             raise
         except Exception as e:

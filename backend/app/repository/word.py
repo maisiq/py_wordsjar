@@ -41,8 +41,11 @@ class WordRepository:
         self._session.add(w)
         try:
             await self._session.commit()
-        except (UniqueViolation, IntegrityError):
-            raise AlreadyExistsError("word already exists")
+        except (UniqueViolation, IntegrityError) as e:
+            # Without the rollback the session stays in a failed transaction and
+            # every later statement in this request fails as well.
+            await self._session.rollback()
+            raise AlreadyExistsError("word already exists") from e
 
     async def words(self, params: QueryParams) -> list[Word]:
         order_fields = resolve_columns(SORT_COLUMNS, params.sort_by or [])

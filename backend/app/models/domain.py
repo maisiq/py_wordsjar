@@ -68,3 +68,11 @@ class Roles(StrEnum):
     ANY = "any"
     USER = "user"
     ADMIN = "admin"
+
+
+class Status(StrEnum):
+    """How well the user knows a word when it is added to the jar."""
+
+    NEW = "new"
+    MEDIUM = "medium"
+    WELLKNOWN = "wellknown"

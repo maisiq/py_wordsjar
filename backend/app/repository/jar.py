@@ -1,5 +1,6 @@
 import datetime as dt
 
+from core.errors import NotFound
 from models.domain import JarWord, TestWord, UserWord, Word
 from models.mappers import create_jar_word, create_test_word, word_orm_to_domain
 from models.orm import UserORM, UserWordORM, WordORM
@@ -32,19 +33,21 @@ class JarRepository:
     def __init__(self, session: AsyncSession):
         self._session = session
 
-    async def add_words(self, username: str, words: list[str], rating: float):
+    async def add_words(self, username: str, words: list[str], rating: float) -> int:
         res = await self._session.execute(
             select(UserORM.id)
             .where(UserORM.username == username)
         )
         user_id = res.scalar_one_or_none()
         if user_id is None:
-            raise Exception("user not exists")
+            raise NotFound("user not found")
 
+        # ``words`` is already normalised by the service; the dictionary stores
+        # lowercase entries, so "Apple" and "apple" are the same word now.
         res = await self._session.execute(select(WordORM.id).where(WordORM.en.in_(words)))
         word_ids = res.scalars().all()
         if not word_ids:
-            raise Exception("word not exists")
+            raise NotFound("none of the given words exist")
 
         last_attempt = dt.datetime.now(dt.UTC) - dt.timedelta(days=1)
 
@@ -225,13 +228,15 @@ class JarRepository:
             words[i] = create_jar_word(word, rating)
         return words
 
-    async def delete(self, username: str, word: str) -> None:
-        stmt = (
-            delete(UserWordORM)
-            .where(
-                UserWordORM.user.has(UserORM.username == username),
-                UserWordORM.word.has(WordORM.en == word),
-            )
+    async def delete(self, username: str, word: str) -> int:
+        """Remove a word from the jar and return how many rows were removed."""
+        user_id = select(UserORM.id).where(UserORM.username == username).scalar_subquery()
+        word_id = select(WordORM.id).where(WordORM.en == word).scalar_subquery()
+
+        stmt = delete(UserWordORM).where(
+            UserWordORM.user_id == user_id,
+            UserWordORM.word_id == word_id,
         )
-        await self._session.execute(stmt)
+        res = await self._session.execute(stmt)
         await self._session.commit()
+        return res.rowcount or 0

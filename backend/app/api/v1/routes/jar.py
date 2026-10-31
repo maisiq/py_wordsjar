@@ -5,7 +5,7 @@ from api.v1.schemas import (
     AddJarWordRequest,
     AddWordsToJarResponse,
     DeleteJarWordRequest,
-    SuccessResponse,
+    DeleteJarWordResponse,
 )
 from fastapi import APIRouter, Depends, Query, Security, status
 from models.domain import JarWord, Tokens, Word
@@ -66,6 +66,6 @@ async def delete_word_from_jar(
     userdata: Annotated[Tokens, Security(get_userdata_strict, scopes=["user", "admin"])],
     service: Annotated[JarService, Depends(get_jar_service)],
     payload: DeleteJarWordRequest,
-) -> SuccessResponse:
-    await service.delete_word(userdata.username, payload.word)
-    return SuccessResponse()
+) -> DeleteJarWordResponse:
+    deleted = await service.delete_word(userdata.username, payload.word)
+    return DeleteJarWordResponse(deleted=deleted)

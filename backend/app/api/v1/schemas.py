@@ -1,5 +1,7 @@
 from pydantic import BaseModel, Field
 
+from models.domain import Status
+
 #: Usernames end up in logs and in the ``sub`` claim, so keep them boring.
 USERNAME_PATTERN = r"^[A-Za-z0-9_.-]{3,32}$"
 
@@ -48,11 +50,17 @@ class VerifyWordRequest(BaseModel):
 
 class AddJarWordRequest(BaseModel):
     words_en: list[str] = Field(min_length=1, max_length=1000)
-    status: str | None = None
+    #: An unknown status is a 422 instead of a silent fall back to "new".
+    status: Status | None = None
 
 
 class DeleteJarWordRequest(BaseModel):
     word: str = Field(min_length=1, max_length=64)
+
+
+class DeleteJarWordResponse(SuccessResponse):
+    #: 0 when the word was already not in the jar: deleting is idempotent.
+    deleted: int = 0
 
 
 class AddWordsToJarResponse(BaseModel):
