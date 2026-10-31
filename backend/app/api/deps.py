@@ -1,9 +1,11 @@
 from logging import Logger
 from typing import Annotated
 
-from core import config, errors
+from api.middleware.request import client_ip
+from core import config
+from core.errors import AppError, RateLimited
 from db.postgres import get_sessionmaker
-from fastapi import Depends, Header, HTTPException, status
+from fastapi import Depends, Header, HTTPException, Request, status
 from fastapi.security import SecurityScopes
 from logger import get_logger
 from models.domain import Tokens
@@ -15,7 +17,8 @@ from repository import (
     WordRepository,
 )
 from services import AuthService, ExamService, JarService, WordService
-from services.helpers import validate_access_token
+from services.helpers import decode_access_token
+from services.ratelimit import login_limiter, refresh_limiter, signup_limiter
 from sqlalchemy.ext.asyncio import AsyncSession
 
 
@@ -44,7 +47,7 @@ async def get_word_repo(sess: Annotated[AsyncSession, Depends(get_session)]) -> 
 
 async def get_word_service(
     logger: Annotated[Logger, Depends(get_logger)],
-    repo: Annotated[WordRepository, Depends(get_word_repo)]
+    repo: Annotated[WordRepository, Depends(get_word_repo)],
 ):
     return WordService(logger, repo)
 
@@ -57,13 +60,15 @@ async def get_user_repo(sess: Annotated[AsyncSession, Depends(get_session)]) -> 
     return UserRepository(sess)
 
 
-async def get_token_storage(cfg: Annotated[config.JWTSettings, Depends(get_jwt_settings)]) -> TokenStorage:
-    return TokenStorage(cfg)
+async def get_token_storage(
+    sess: Annotated[AsyncSession, Depends(get_session)],
+) -> TokenStorage:
+    return TokenStorage(sess)
 
 
 async def get_auth_service(
     repo: Annotated[UserRepository, Depends(get_user_repo)],
-    secret: Annotated[UserRepository, Depends(get_secret_repo)],
+    secret: Annotated[SecretRepository, Depends(get_secret_repo)],
     storage: Annotated[TokenStorage, Depends(get_token_storage)],
     logger: Annotated[Logger, Depends(get_logger)],
     cfg: Annotated[config.JWTSettings, Depends(get_jwt_settings)],
@@ -101,46 +106,80 @@ def get_refresh_token(
     return x_refresh_token
 
 
+def _enforce(limiter, request: Request, bucket: str) -> None:
+    retry_after = limiter.hit(f"{bucket}:{client_ip(request)}")
+    if retry_after is not None:
+        raise RateLimited(retry_after)
+
+
+async def login_rate_limit(request: Request) -> None:
+    _enforce(login_limiter, request, "login")
+
+
+async def signup_rate_limit(request: Request) -> None:
+    _enforce(signup_limiter, request, "signup")
+
+
+async def refresh_rate_limit(request: Request) -> None:
+    _enforce(refresh_limiter, request, "refresh")
+
+
 async def _get_userdata(
+    request: Request,
     security_scopes: SecurityScopes,
     repo: Annotated[SecretRepository, Depends(get_secret_repo)],
     user_service: Annotated[AuthService, Depends(get_auth_service)],
     storage: Annotated[TokenStorage, Depends(get_token_storage)],
-    x_auth_token: Annotated[str, Depends(get_access_token)],
+    x_auth_token: Annotated[str | None, Depends(get_access_token)],
     x_refresh_token: Annotated[str | None, Depends(get_refresh_token)],
     cfg: Annotated[config.JWTSettings, Depends(get_jwt_settings)],
 ):
     if not x_auth_token:
-        return
+        return None
 
-    if await storage.get(x_auth_token):
-        return
+    # Every mandatory dependency here returns None instead of raising: the
+    # optional variant of this dependency is used by endpoints that also serve
+    # anonymous users.
+    if await storage.is_revoked(x_auth_token):
+        return None
 
-    sign_key = await repo.get_key()
     try:
-        username = validate_access_token(cfg, sign_key, x_auth_token)
-    except errors.ExpiredTokenError:
-        return
+        sign_key = await repo.get_key()
+        claims = decode_access_token(cfg, sign_key, x_auth_token)
+    except AppError:
+        return None
+
+    username = claims.get("sub")
     if not username:
-        return
+        return None
 
     user_info = await user_service.get_user_info(username)
-    if not user_info or (security_scopes.scopes and user_info.role not in security_scopes.scopes):
-        return
+    if user_info is None:
+        return None
 
-    user_data = Tokens(
+    if security_scopes.scopes and user_info.role not in security_scopes.scopes:
+        # Valid token, insufficient role: remember it so that the strict
+        # dependency can answer 403 instead of 401.
+        request.state.auth_denied = True
+        return None
+
+    return Tokens(
         username=username,
         access=x_auth_token,
         refresh=x_refresh_token,
     )
 
-    return user_data
-
 
 async def get_userdata_strict(
+    request: Request,
     userdata: Annotated[Tokens | None, Depends(_get_userdata)],
-):
+) -> Tokens:
     if userdata is None:
+        if getattr(request.state, "auth_denied", False):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Insufficient permissions",
+            )
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid or Expired Token",
@@ -149,6 +188,6 @@ async def get_userdata_strict(
 
 
 async def get_userdata(
-    data: Annotated[Tokens | None, Depends(_get_userdata)], 
-):
+    data: Annotated[Tokens | None, Depends(_get_userdata)],
+) -> Tokens | None:
     return data

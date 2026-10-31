@@ -11,7 +11,10 @@ def word_orm_to_domain(w: WordORM) -> Word:
         examples=w.examples,
     )
 
-def user_orm_to_domain(u: UserORM) -> User:
+def user_orm_to_domain(u: UserORM | None) -> User | None:
+    if u is None:
+        return None
+
     return User(
         id=u.id,
         hashed_password=u.hashed_password,
