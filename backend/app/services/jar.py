@@ -32,8 +32,6 @@ class JarService:
             return await self._repo.words(username, params)
         except AppError:
             raise
-        except AppError:
-            raise
         except Exception as e:
             self._log.error("failed to get word list: %s | error_type: %s", e, type(e))
             raise InternalError()
