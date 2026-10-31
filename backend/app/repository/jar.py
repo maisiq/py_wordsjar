@@ -1,12 +1,27 @@
 import datetime as dt
 
-from models.domain import JarWord, UserWord, Word
-from models.mappers import create_jar_word, word_orm_to_domain
+from models.domain import JarWord, TestWord, UserWord, Word
+from models.mappers import create_jar_word, create_test_word, word_orm_to_domain
 from models.orm import UserORM, UserWordORM, WordORM
+from repository.columns import coerce_cursor_value, resolve_columns
 from repository.params import QueryParams
 from sqlalchemy import delete, select, tuple_, update
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
+
+#: Fields the client may sort by, mapped to their column.
+SORT_COLUMNS = {
+    "en": WordORM.en,
+    "id": WordORM.id,
+    "rating": UserWordORM.rating,
+    "last_attempt": UserWordORM.last_attempt,
+}
+
+#: A word rated at the maximum is considered learned.
+MAX_RATING = 5.0
+
+#: A word is due again one day after the last attempt.
+COOLDOWN = dt.timedelta(days=1)
 
 
 class JarRepository:
@@ -102,28 +117,44 @@ class JarRepository:
         await self._session.execute(stmt)
         await self._session.commit()
 
-    async def test_words(self, username: str, params: QueryParams) -> list[Word]:
+    async def test_words(self, username: str, params: QueryParams) -> list[TestWord]:
+        order_fields = resolve_columns(SORT_COLUMNS, params.sort_by or ["rating", "last_attempt"])
+        order_by = [f.desc() if params.desc else f.asc() for f in order_fields]
+
+        # ``last_attempt`` is written as naive UTC (see add_words), so the
+        # cutoff has to be naive UTC as well; now() is local time on the server.
+        cutoff = dt.datetime.now(dt.UTC).replace(tzinfo=None) - COOLDOWN
+
         query = (
-            select(WordORM)
+            select(WordORM, UserWordORM.rating, UserWordORM.last_attempt)
             .join(UserWordORM, WordORM.id == UserWordORM.word_id)
             .join(UserORM, UserORM.id == UserWordORM.user_id)
-            .where(UserORM.username == username)
+            .where(
+                UserORM.username == username,
+                UserWordORM.rating <= MAX_RATING,
+                UserWordORM.last_attempt < cutoff,
+            )
+            .order_by(*order_by)
             .limit(params.limit)
         )
 
-        ts = dt.datetime.now() - dt.timedelta(days=1)
+        if params.pointer:
+            values = [
+                coerce_cursor_value(field, raw)
+                for field, raw in zip(order_fields, params.pointer)
+            ]
 
-        query = query.where(
-            UserWordORM.rating <= 5.0,
-            UserWordORM.last_attempt < ts,
-        ).order_by(UserWordORM.rating, UserWordORM.last_attempt)
+            if params.desc:
+                query = query.where(tuple_(*order_fields) < values)
+            else:
+                query = query.where(tuple_(*order_fields) > values)
 
         res = await self._session.execute(query)
-        words_orm = res.scalars().all()
+        rows = res.tuples().all()
 
-        words: list[WordORM] = [None]*len(words_orm)
-        for i, word in enumerate(words_orm):
-            words[i] = word_orm_to_domain(word)
+        words: list[TestWord] = [None] * len(rows)
+        for i, (word, rating, last_attempt) in enumerate(rows):
+            words[i] = create_test_word(word, rating, last_attempt)
         return words
 
     async def words(self, username: str, params: QueryParams) -> list[JarWord]:
@@ -135,12 +166,7 @@ class JarRepository:
             .limit(params.limit)
         )
 
-        order_fields = []
-        for f in params.sort_by:
-            field = getattr(WordORM, f, None) or getattr(UserWordORM, f, None)
-
-            if field is not None:
-                order_fields.append(field)
+        order_fields = resolve_columns(SORT_COLUMNS, params.sort_by or [])
 
         order_by = [
             f.desc() if params.desc else f.asc()
@@ -150,11 +176,10 @@ class JarRepository:
         query = query.order_by(*order_by)
 
         if params.pointer:
-            values = []
-            for idx, field in enumerate(order_fields):
-                factory = field.expression.type.python_type
-                value = factory(params.pointer[idx])
-                values.append(value)
+            values = [
+                coerce_cursor_value(field, raw)
+                for field, raw in zip(order_fields, params.pointer)
+            ]
 
             if params.desc:
                 query = query.where(tuple_(*order_fields) < values)

@@ -56,6 +56,12 @@ async def get_secret_repo(cfg: Annotated[config.JWTSettings, Depends(get_jwt_set
     return SecretRepository(cfg)
 
 
+async def get_cursor_secret(
+    repo: Annotated[SecretRepository, Depends(get_secret_repo)],
+) -> str:
+    return await repo.get_cursor_secret()
+
+
 async def get_user_repo(sess: Annotated[AsyncSession, Depends(get_session)]) -> UserRepository:
     return UserRepository(sess)
 

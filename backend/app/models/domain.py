@@ -27,6 +27,10 @@ class Word(BaseModel):
 
 class TestWord(Word):
     reverse: bool = False
+    #: Sorting keys for the exam queue; not part of the public response shape.
+    rating: float = 0.0
+    last_attempt: dt.datetime | None = None
+    _valid_sort_fields: ClassVar[tuple[str, ...]] = ("en", "id", "rating", "last_attempt")
 
 
 class JarWord(Word):

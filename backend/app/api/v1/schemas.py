@@ -69,6 +69,17 @@ class WordAPI(BaseModel):
     in_jar: bool
 
 
+class TestWordAPI(WordAPI):
+    """Exam item as the client sees it.
+
+    The rating and the last attempt stay internal: the queue order is derived
+    from them, the browser only needs to know which way to show the card.
+    """
+
+    id: int | None = None
+    reverse: bool = False
+
+
 class GetWordResponse(BaseModel):
     name: str
 

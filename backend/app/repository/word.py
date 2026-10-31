@@ -2,11 +2,19 @@ from core.errors import AlreadyExistsError, NotFound
 from models.mappers import word_orm_to_domain
 from models.orm import UserORM, UserWordORM, WordORM
 from psycopg.errors import UniqueViolation
+from repository.columns import coerce_cursor_value, resolve_columns
 from repository.params import QueryParams
 from services.words import Word
 from sqlalchemy import and_, literal, select, tuple_
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
+
+#: Fields the client may sort by, mapped to their column. Explicit on purpose:
+#: ``getattr`` on two ORM classes at once joined an unrelated table.
+SORT_COLUMNS = {
+    "en": WordORM.en,
+    "id": WordORM.id,
+}
 
 
 class WordRepository:
@@ -36,13 +44,8 @@ class WordRepository:
         except (UniqueViolation, IntegrityError):
             raise AlreadyExistsError("word already exists")
 
-    async def words(self, params: QueryParams) -> list[Word]: 
-        order_fields = []
-        for f in params.sort_by:
-            field = getattr(WordORM, f, None) or getattr(UserWordORM, f, None)
-
-            if field is not None:
-                order_fields.append(field)
+    async def words(self, params: QueryParams) -> list[Word]:
+        order_fields = resolve_columns(SORT_COLUMNS, params.sort_by or [])
 
         order_by = [
             f.desc() if params.desc else f.asc()
@@ -67,11 +70,10 @@ class WordRepository:
         query = query.limit(params.limit).order_by(*order_by)
 
         if params.pointer:
-            values = []
-            for idx, field in enumerate(order_fields):
-                factory = field.expression.type.python_type
-                value = factory(params.pointer[idx])
-                values.append(value)
+            values = [
+                coerce_cursor_value(field, raw)
+                for field, raw in zip(order_fields, params.pointer)
+            ]
 
             if params.desc:
                 query = query.where(tuple_(*order_fields) < values)

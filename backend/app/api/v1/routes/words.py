@@ -1,6 +1,11 @@
 from typing import Annotated
 
-from api.deps import get_userdata, get_userdata_strict, get_word_service
+from api.deps import (
+    get_cursor_secret,
+    get_userdata,
+    get_userdata_strict,
+    get_word_service,
+)
 from api.v1.mappers import word_domain_to_api
 from api.v1.schemas import AddWordRequest, SearchResponse
 from fastapi import APIRouter, Depends, Query, Security, status
@@ -27,6 +32,7 @@ MAX_SEARCH_LIMIT = 50
 async def word_list(
     service: Annotated[WordService, Depends(get_word_service)],
     userdata: Annotated[Tokens | None, Security(get_userdata, scopes=[])],
+    secret: Annotated[str, Depends(get_cursor_secret)],
     limit: int = Query(10, alias="per_page", ge=1, le=MAX_PAGE_SIZE),
     sort: str = Query("en", min_length=1),
     desc: bool = Query(False),
@@ -36,11 +42,16 @@ async def word_list(
         sort=parse_sort_fields(sort, Word.valid_sort_fields()),
         desc=desc,
         limit=limit,
-        cursor=parse_cursor(cursor),
+        cursor=parse_cursor(cursor, secret),
     )
     if userdata:
         params.username = userdata.username
-    return await paginate(params, service.words)
+    return await paginate(
+        params,
+        service.words,
+        allowed_fields=Word.valid_sort_fields(),
+        secret=secret,
+    )
 
 
 @router.post("/words", status_code=status.HTTP_201_CREATED)
