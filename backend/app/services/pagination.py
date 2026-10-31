@@ -1,10 +1,20 @@
 import base64
-from typing import Any, Callable, Coroutine, Generic, TypeVar
+from typing import Any, Callable, Coroutine, Generic, Sequence, TypeVar
 
-from pydantic import BaseModel, Field
+from core.errors import BadRequest, InvalidCursor
+from pydantic import BaseModel, Field, ValidationError
 from repository.params import QueryParams
 
 T = TypeVar("T")
+
+#: Largest page size the API accepts; ``paginate`` asks the repository for one
+#: extra row to decide whether another page exists.
+MAX_PAGE_SIZE = 100
+
+
+class InvalidSortField(BadRequest):
+    code = "invalid_sort_field"
+    message = "invalid sort field"
 
 
 class Cursor(BaseModel):
@@ -15,7 +25,7 @@ class Cursor(BaseModel):
 
 
 class Params(BaseModel):
-    limit: int = Field(default=10, lt=101)
+    limit: int = Field(default=10, ge=1, le=MAX_PAGE_SIZE)
     sort: list[str] = Field(default_factory=list)
     desc: bool | None = None
     cursor: Cursor | None = None
@@ -30,6 +40,20 @@ class Paginated(BaseModel, Generic[T]):
     prev_cursor: str = ""
 
 
+def parse_sort_fields(sort: str, allowed: Sequence[str]) -> list[str]:
+    """Validate ``?sort=a,b`` against the fields an endpoint may sort by."""
+    fields = [field.strip() for field in sort.split(",") if field.strip()]
+    if not fields:
+        raise InvalidSortField("sort field is required")
+
+    for field in fields:
+        if field not in allowed:
+            raise InvalidSortField(
+                f"invalid sort field '{field}', allowed fields: {', '.join(allowed)}"
+            )
+    return fields
+
+
 def encode_cursor(cur: Cursor) -> str:
     cursor = cur.model_dump_json()
     cur_encoded = base64.urlsafe_b64encode(bytes(cursor, encoding="utf8"))
@@ -37,8 +61,19 @@ def encode_cursor(cur: Cursor) -> str:
 
 
 def decode_cursor(cur: str) -> Cursor:
-    json_bytes = base64.urlsafe_b64decode(cur)
-    return Cursor.model_validate_json(json_bytes)
+    try:
+        json_bytes = base64.urlsafe_b64decode(cur)
+        return Cursor.model_validate_json(json_bytes)
+    except (ValidationError, ValueError, TypeError) as exc:
+        # A cursor is client supplied input: base64 errors and shape errors are
+        # both "bad request", never an internal error.
+        raise InvalidCursor("cursor is malformed") from exc
+
+
+def parse_cursor(value: str | None) -> Cursor | None:
+    if not value:
+        return None
+    return decode_cursor(value)
 
 
 async def paginate(
@@ -94,7 +129,9 @@ async def paginate(
             if extra:
                 has_prev = True
 
-    cur = params.cursor or Cursor(field=",".join(query_params.sort_by), desc=params.desc, value="", next=True)
+    cur = params.cursor or Cursor(
+        field=",".join(query_params.sort_by), desc=params.desc, value="", next=True
+    )
 
     def get_cursor_value(item):
         return ",".join(str(getattr(item, f)) for f in query_params.sort_by)

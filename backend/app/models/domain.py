@@ -13,15 +13,16 @@ class Word(BaseModel):
     examples: list[str] | None = Field(default_factory=list)
 
     in_jar: bool = False
-    _valid_sort_fields: ClassVar[tuple[str]] = ("en", "id")
+    _valid_sort_fields: ClassVar[tuple[str, ...]] = ("en", "id")
 
     @classmethod
     def is_valid_sort_field(cls, field: str) -> bool:
         return field in cls._valid_sort_fields
 
-    @property
-    def valid_sort_fields(self):
-        return self._valid_sort_fields
+    @classmethod
+    def valid_sort_fields(cls) -> tuple[str, ...]:
+        """Fields that may appear in ``?sort=`` and in the cursor."""
+        return cls._valid_sort_fields
 
 
 class TestWord(Word):
@@ -30,7 +31,7 @@ class TestWord(Word):
 
 class JarWord(Word):
     rating: float
-    _valid_sort_fields: ClassVar[tuple[str]] = ("en", "id", "rating")
+    _valid_sort_fields: ClassVar[tuple[str, ...]] = ("en", "id", "rating")
 
 
 class UserWord(BaseModel):

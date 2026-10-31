@@ -8,27 +8,24 @@ from api.v1.schemas import (
     TokensResponse,
     UserInfoResponse,
 )
-from core.errors import AlreadyExistsError, InvalidToken
+from core.errors import InvalidToken, NotFound
 from fastapi import APIRouter, Depends, status
-from fastapi.responses import JSONResponse
 from models.domain import Tokens
-from services.auth import AuthError, AuthService
+from services.auth import AuthService
 
 router = APIRouter(
     tags=["auth"],
 )
 
 
-@router.post("/signup")
+@router.post("/signup", status_code=status.HTTP_201_CREATED)
 async def create_user(
     service: Annotated[AuthService, Depends(get_auth_service)],
     req: CreateUserRequest,
-):
-    try:
-        await service.create_user(req.username, req.password)
-        return SuccessResponse()
-    except AlreadyExistsError as e:
-        return JSONResponse({"detail": str(e)}, status.HTTP_400_BAD_REQUEST)
+) -> SuccessResponse:
+    # Duplicate usernames are reported by AuthService as AlreadyExistsError -> 409.
+    await service.create_user(req.username, req.password)
+    return SuccessResponse()
 
 
 @router.post("/auth")
@@ -36,26 +33,24 @@ async def authenticate_user(
     service: Annotated[AuthService, Depends(get_auth_service)],
     req: AuthenticateRequest,
 ) -> TokensResponse:
-    try:
-        return await service.authenticate(req.username, req.password)
-    except AuthError as e:
-        return JSONResponse({"detail": str(e)}, status.HTTP_400_BAD_REQUEST)
+    # Wrong credentials raise AuthError -> 401.
+    return await service.authenticate(req.username, req.password)
 
 
 @router.get("/user/info")
 async def user_info(
-    userdata: Annotated[str, Depends(get_userdata_strict)],
+    userdata: Annotated[Tokens, Depends(get_userdata_strict)],
     service: Annotated[AuthService, Depends(get_auth_service)],
 ) -> UserInfoResponse:
     info = await service.get_user_info(userdata.username)
-    if not info:
-        return JSONResponse({"detail": "user not found"}, status.HTTP_404_NOT_FOUND)
+    if info is None:
+        raise NotFound("user not found")
     return info
 
 
 @router.post("/logout")
 async def logout(
-    userdata: Annotated[str, Depends(get_userdata_strict)],
+    userdata: Annotated[Tokens, Depends(get_userdata_strict)],
     service: Annotated[AuthService, Depends(get_auth_service)],
 ) -> SuccessResponse:
     await service.logout(userdata)
@@ -64,10 +59,9 @@ async def logout(
 
 @router.post("/refresh")
 async def refresh(
-    token: Annotated[str, Depends(get_refresh_token)],
+    token: Annotated[str | None, Depends(get_refresh_token)],
     service: Annotated[AuthService, Depends(get_auth_service)],
 ) -> TokensResponse:
-    try:
-        return await service.get_new_tokens(token)
-    except InvalidToken as e:
-        return JSONResponse({"detail": str(e)}, status.HTTP_400_BAD_REQUEST)
+    if not token:
+        raise InvalidToken("refresh token is required")
+    return await service.get_new_tokens(token)

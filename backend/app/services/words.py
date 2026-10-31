@@ -1,7 +1,7 @@
 from logging import Logger
 from typing import Protocol
 
-from core.errors import AlreadyExistsError, InternalError, NotFound
+from core.errors import AlreadyExistsError, AppError, InternalError, NotFound
 from models.domain import Word
 from repository.params import QueryParams
 
@@ -9,8 +9,8 @@ from .helpers import normalize_word
 
 
 class Repository(Protocol):
-    async def get_word(self, word: str): ...
-    async def add_word(self, word: Word): ...
+    async def get_word(self, word: str) -> Word: ...
+    async def add_word(self, word: Word) -> None: ...
     async def words(self, params: QueryParams) -> list[Word]: ...
     async def get_words_start_with(self, query: str, limit: int, user: str | None = None) -> list[Word]: ...
 
@@ -20,13 +20,13 @@ class WordService:
         self._log = log
         self._repo = repo
 
-    async def get_word(self, word: str) -> Word | None:
+    async def get_word(self, word: str) -> Word:
         try:
-            w = await self._repo.get_word(word)
-            return w
-        except NotFound:
-            return
+            return await self._repo.get_word(word)
+        except AppError:
+            raise
         except Exception as e:
+            self._log.error("failed to get word (%s): %s", word, e)
             raise InternalError("failed to get the word")
 
     async def add_word(self, word: Word) -> None:
@@ -39,16 +39,23 @@ class WordService:
             raise
         except Exception as e:
             self._log.error("failed to add word (%s) to repo: %s | error_type: %s", word, e, type(e))
-            raise InternalError()
+            raise InternalError("failed to add the word")
 
     async def words(self, params: QueryParams) -> list[Word]:
-        words = await self._repo.words(params)
-        return words
+        try:
+            return await self._repo.words(params)
+        except AppError:
+            raise
+        except Exception as e:
+            self._log.error("failed to get word list: %s | error_type: %s", e, type(e))
+            raise InternalError("failed to get the word list")
 
     async def search(self, query: str, limit: int, user: str | None = None) -> list[Word]:
         query = query.strip().lower()
         try:
             return await self._repo.get_words_start_with(query, limit, user)
+        except AppError:
+            raise
         except Exception as e:
-            self._log.error("failed to get words by search quer(%s): %s", query, e)
-            raise InternalError("internal error")
+            self._log.error("failed to get words by search query(%s): %s", query, e)
+            raise InternalError("failed to search words")
