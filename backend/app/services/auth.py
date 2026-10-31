@@ -3,7 +3,13 @@ from logging import Logger
 from typing import Protocol
 
 from core import config
-from core.errors import AlreadyExistsError, AppError, AuthError, InternalError, InvalidToken
+from core.errors import (
+    AlreadyExistsError,
+    AppError,
+    AuthError,
+    InternalError,
+    InvalidToken,
+)
 from models.domain import Roles, Tokens, User, UserInfo
 
 from .helpers import (
