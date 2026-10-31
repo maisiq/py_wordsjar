@@ -23,6 +23,11 @@ class UserRepository:
         except (UniqueViolation, IntegrityError) as e:
             await self._session.rollback()
             raise AlreadyExistsError("user already exists") from e
+        try:
+            await self._session.commit()
+        except (UniqueViolation, IntegrityError) as e:
+            await self._session.rollback()
+            raise AlreadyExistsError("user already exists") from e
 
     async def get(self, username: str) -> User | None:
         query = select(UserORM).where(UserORM.username == username)
