@@ -20,10 +20,18 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 
 async def get_session():
-    session = get_sessionmaker()
+    sessionmaker = get_sessionmaker()
+    session = sessionmaker()
 
-    async with session() as session:
+    try:
         yield session
+    except BaseException:
+        # Repositories commit on their own; anything that escapes must not leave
+        # an aborted transaction behind for the next user of this connection.
+        await session.rollback()
+        raise
+    finally:
+        await session.close()
 
 
 def get_jwt_settings() -> config.JWTSettings:
