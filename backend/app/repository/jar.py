@@ -116,7 +116,7 @@ class JarRepository:
         makes "this word is due" part of the same atomic step: a row comes back
         only when the answer was actually applied.
         """
-        now = dt.datetime.now(dt.UTC).replace(tzinfo=None)
+        now = dt.datetime.now(dt.UTC)
         cutoff = now - COOLDOWN
 
         if correct:
@@ -155,14 +155,30 @@ class JarRepository:
         order_fields = resolve_columns(SORT_COLUMNS, params.sort_by or ["rating", "last_attempt"])
         order_by = [f.desc() if params.desc else f.asc() for f in order_fields]
 
+        # ``last_attempt`` is a timestamptz column, so the cutoff is a timezone aware
+        # UTC timestamp; comparing it to a naive local now() was off by the
+        # server's offset.
+        cutoff = dt.datetime.now(dt.UTC) - COOLDOWN
+
+    async def test_words(self, username: str, params: QueryParams) -> list[TestWord]:
+        order_fields = resolve_columns(SORT_COLUMNS, params.sort_by or ["rating", "last_attempt"])
+        order_by = [f.desc() if params.desc else f.asc() for f in order_fields]
+
         # ``last_attempt`` is written as naive UTC (see add_words), so the
         # cutoff has to be naive UTC as well; now() is local time on the server.
         cutoff = dt.datetime.now(dt.UTC).replace(tzinfo=None) - COOLDOWN
 
         query = (
             select(WordORM, UserWordORM.rating, UserWordORM.last_attempt)
+            select(WordORM, UserWordORM.rating, UserWordORM.last_attempt)
             .join(UserWordORM, WordORM.id == UserWordORM.word_id)
             .join(UserORM, UserORM.id == UserWordORM.user_id)
+            .where(
+                UserORM.username == username,
+                UserWordORM.rating <= MAX_RATING,
+                UserWordORM.last_attempt < cutoff,
+            )
+            .order_by(*order_by)
             .where(
                 UserORM.username == username,
                 UserWordORM.rating <= MAX_RATING,
@@ -182,10 +198,24 @@ class JarRepository:
                 query = query.where(tuple_(*order_fields) < values)
             else:
                 query = query.where(tuple_(*order_fields) > values)
+        if params.pointer:
+            values = [
+                coerce_cursor_value(field, raw)
+                for field, raw in zip(order_fields, params.pointer)
+            ]
+
+            if params.desc:
+                query = query.where(tuple_(*order_fields) < values)
+            else:
+                query = query.where(tuple_(*order_fields) > values)
 
         res = await self._session.execute(query)
         rows = res.tuples().all()
+        rows = res.tuples().all()
 
+        words: list[TestWord] = [None] * len(rows)
+        for i, (word, rating, last_attempt) in enumerate(rows):
+            words[i] = create_test_word(word, rating, last_attempt)
         words: list[TestWord] = [None] * len(rows)
         for i, (word, rating, last_attempt) in enumerate(rows):
             words[i] = create_test_word(word, rating, last_attempt)
@@ -201,6 +231,7 @@ class JarRepository:
         )
 
         order_fields = resolve_columns(SORT_COLUMNS, params.sort_by or [])
+        order_fields = resolve_columns(SORT_COLUMNS, params.sort_by or [])
 
         order_by = [
             f.desc() if params.desc else f.asc()
@@ -210,6 +241,10 @@ class JarRepository:
         query = query.order_by(*order_by)
 
         if params.pointer:
+            values = [
+                coerce_cursor_value(field, raw)
+                for field, raw in zip(order_fields, params.pointer)
+            ]
             values = [
                 coerce_cursor_value(field, raw)
                 for field, raw in zip(order_fields, params.pointer)

@@ -1,3 +1,4 @@
+from models.domain import Status
 from pydantic import BaseModel, Field
 
 from models.domain import Status

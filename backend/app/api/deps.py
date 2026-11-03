@@ -48,6 +48,7 @@ async def get_word_repo(sess: Annotated[AsyncSession, Depends(get_session)]) -> 
 async def get_word_service(
     logger: Annotated[Logger, Depends(get_logger)],
     repo: Annotated[WordRepository, Depends(get_word_repo)],
+    repo: Annotated[WordRepository, Depends(get_word_repo)],
 ):
     return WordService(logger, repo)
 
@@ -70,10 +71,15 @@ async def get_token_storage(
     sess: Annotated[AsyncSession, Depends(get_session)],
 ) -> TokenStorage:
     return TokenStorage(sess)
+async def get_token_storage(
+    sess: Annotated[AsyncSession, Depends(get_session)],
+) -> TokenStorage:
+    return TokenStorage(sess)
 
 
 async def get_auth_service(
     repo: Annotated[UserRepository, Depends(get_user_repo)],
+    secret: Annotated[SecretRepository, Depends(get_secret_repo)],
     secret: Annotated[SecretRepository, Depends(get_secret_repo)],
     storage: Annotated[TokenStorage, Depends(get_token_storage)],
     logger: Annotated[Logger, Depends(get_logger)],
@@ -130,17 +136,38 @@ async def refresh_rate_limit(request: Request) -> None:
     _enforce(refresh_limiter, request, "refresh")
 
 
+def _enforce(limiter, request: Request, bucket: str) -> None:
+    retry_after = limiter.hit(f"{bucket}:{client_ip(request)}")
+    if retry_after is not None:
+        raise RateLimited(retry_after)
+
+
+async def login_rate_limit(request: Request) -> None:
+    _enforce(login_limiter, request, "login")
+
+
+async def signup_rate_limit(request: Request) -> None:
+    _enforce(signup_limiter, request, "signup")
+
+
+async def refresh_rate_limit(request: Request) -> None:
+    _enforce(refresh_limiter, request, "refresh")
+
+
 async def _get_userdata(
+    request: Request,
     request: Request,
     security_scopes: SecurityScopes,
     repo: Annotated[SecretRepository, Depends(get_secret_repo)],
     user_service: Annotated[AuthService, Depends(get_auth_service)],
     storage: Annotated[TokenStorage, Depends(get_token_storage)],
     x_auth_token: Annotated[str | None, Depends(get_access_token)],
+    x_auth_token: Annotated[str | None, Depends(get_access_token)],
     x_refresh_token: Annotated[str | None, Depends(get_refresh_token)],
     cfg: Annotated[config.JWTSettings, Depends(get_jwt_settings)],
 ):
     if not x_auth_token:
+        return None
         return None
 
     # Every mandatory dependency here returns None instead of raising: the
@@ -156,7 +183,21 @@ async def _get_userdata(
         return None
 
     username = claims.get("sub")
+    # Every mandatory dependency here returns None instead of raising: the
+    # optional variant of this dependency is used by endpoints that also serve
+    # anonymous users.
+    if await storage.is_revoked(x_auth_token):
+        return None
+
+    try:
+        sign_key = await repo.get_key()
+        claims = decode_access_token(cfg, sign_key, x_auth_token)
+    except AppError:
+        return None
+
+    username = claims.get("sub")
     if not username:
+        return None
         return None
 
     user_info = await user_service.get_user_info(username)
@@ -168,7 +209,16 @@ async def _get_userdata(
         # dependency can answer 403 instead of 401.
         request.state.auth_denied = True
         return None
+    if user_info is None:
+        return None
 
+    if security_scopes.scopes and user_info.role not in security_scopes.scopes:
+        # Valid token, insufficient role: remember it so that the strict
+        # dependency can answer 403 instead of 401.
+        request.state.auth_denied = True
+        return None
+
+    return Tokens(
     return Tokens(
         username=username,
         access=x_auth_token,
@@ -178,9 +228,16 @@ async def _get_userdata(
 
 async def get_userdata_strict(
     request: Request,
+    request: Request,
     userdata: Annotated[Tokens | None, Depends(_get_userdata)],
 ) -> Tokens:
+) -> Tokens:
     if userdata is None:
+        if getattr(request.state, "auth_denied", False):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Insufficient permissions",
+            )
         if getattr(request.state, "auth_denied", False):
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
@@ -194,6 +251,8 @@ async def get_userdata_strict(
 
 
 async def get_userdata(
+    data: Annotated[Tokens | None, Depends(_get_userdata)],
+) -> Tokens | None:
     data: Annotated[Tokens | None, Depends(_get_userdata)],
 ) -> Tokens | None:
     return data
