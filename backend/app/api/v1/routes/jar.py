@@ -5,13 +5,19 @@ from api.v1.schemas import (
     AddJarWordRequest,
     AddWordsToJarResponse,
     DeleteJarWordRequest,
+    SuccessResponse,
 )
 from fastapi import APIRouter, Depends, Query, Security, status
-from fastapi.responses import JSONResponse
-from models.domain import JarWord, Word
-from pydantic import ValidationError
+from models.domain import JarWord, Tokens, Word
 from services.jar import JarService
-from services.pagination import Paginated, Params, decode_cursor, paginate
+from services.pagination import (
+    MAX_PAGE_SIZE,
+    Paginated,
+    Params,
+    parse_cursor,
+    parse_sort_fields,
+    paginate,
+)
 
 router = APIRouter(
     prefix="/jar",
@@ -21,42 +27,25 @@ router = APIRouter(
 
 @router.get("")
 async def jar_words(
-    userdata: Annotated[str, Security(get_userdata_strict, scopes=["user", "admin"])],
+    userdata: Annotated[Tokens, Security(get_userdata_strict, scopes=["user", "admin"])],
     service: Annotated[JarService, Depends(get_jar_service)],
     sort: str = Query("rating,id", alias="order_by", min_length=1),
     desc: bool = Query(False),
-    limit: int = Query(10, alias="per_page"),
+    limit: int = Query(10, alias="per_page", ge=1, le=MAX_PAGE_SIZE),
     cursor: str | None = None,
 ) -> Paginated[Word]:
-    if cursor:
-        try:
-            parsed_cur = decode_cursor(cursor)
-        except ValidationError:
-            parsed_cur = None
-    else:
-        parsed_cur = None
-
-    sort_fields = sort.split(",")
-    for field in sort_fields:
-        if not JarWord.is_valid_sort_field(field):
-            return JSONResponse(
-                {"detail": f"Invalid sort field ({field}). Possible values are {JarWord.valid_sort_fields}"},
-                status.HTTP_400_BAD_REQUEST,
-            )
-
     params = Params(
         limit=limit,
         desc=desc,
-        sort=sort_fields,
-        cursor=parsed_cur,
+        sort=parse_sort_fields(sort, JarWord.valid_sort_fields()),
+        cursor=parse_cursor(cursor),
     )
-    words = await paginate(params, lambda q: service.words(userdata.username, q))
-    return words
+    return await paginate(params, lambda q: service.words(userdata.username, q))
 
 
-@router.post("")
+@router.post("", status_code=status.HTTP_201_CREATED)
 async def add_words_to_jar(
-    userdata: Annotated[str, Security(get_userdata_strict, scopes=["user", "admin"])],
+    userdata: Annotated[Tokens, Security(get_userdata_strict, scopes=["user", "admin"])],
     service: Annotated[JarService, Depends(get_jar_service)],
     word_data: AddJarWordRequest,
 ):
@@ -66,9 +55,9 @@ async def add_words_to_jar(
 
 @router.delete("")
 async def delete_word_from_jar(
-    userdata: Annotated[str, Security(get_userdata_strict, scopes=["user", "admin"])],
+    userdata: Annotated[Tokens, Security(get_userdata_strict, scopes=["user", "admin"])],
     service: Annotated[JarService, Depends(get_jar_service)],
     payload: DeleteJarWordRequest,
-):
+) -> SuccessResponse:
     await service.delete_word(userdata.username, payload.word)
-    return JSONResponse({"status": "ok"})
+    return SuccessResponse()

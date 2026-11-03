@@ -3,57 +3,49 @@ from typing import Annotated
 from api.deps import get_userdata, get_userdata_strict, get_word_service
 from api.v1.mappers import word_domain_to_api
 from api.v1.schemas import AddWordRequest, SearchResponse
-from core import errors
 from fastapi import APIRouter, Depends, Query, Security, status
-from fastapi.responses import JSONResponse
-from models.domain import Tokens
-from pydantic import ValidationError
-from services.pagination import Paginated, Params, decode_cursor, paginate
-from services.words import Word, WordService
+from models.domain import Tokens, Word
+from services.pagination import (
+    MAX_PAGE_SIZE,
+    Paginated,
+    Params,
+    parse_cursor,
+    parse_sort_fields,
+    paginate,
+)
+from services.words import WordService
 
 router = APIRouter(
     tags=["words"],
 )
+
+#: Search is not cursor paginated, so its page size needs an explicit ceiling.
+MAX_SEARCH_LIMIT = 50
 
 
 @router.get("/words")
 async def word_list(
     service: Annotated[WordService, Depends(get_word_service)],
     userdata: Annotated[Tokens | None, Security(get_userdata, scopes=[])],
-    limit: int = Query(10, alias="per_page"),
+    limit: int = Query(10, alias="per_page", ge=1, le=MAX_PAGE_SIZE),
     sort: str = Query("en", min_length=1),
     desc: bool = Query(False),
     cursor: str | None = None,
 ) -> Paginated[Word]:
-    parsed_cur = None
-    if cursor:
-        try:
-            parsed_cur = decode_cursor(cursor)
-        except Exception:
-            parsed_cur = None
-
-    sort_fields = sort.split(",")
-    for field in sort_fields:
-        if not Word.is_valid_sort_field(field):
-            return JSONResponse(
-                {"detail": f"Invalid sort field ({field}). Possible values are {Word.valid_sort_fields}"}, 
-                status.HTTP_400_BAD_REQUEST,
-            )
-
     params = Params(
-        sort=sort_fields,
+        sort=parse_sort_fields(sort, Word.valid_sort_fields()),
         desc=desc,
         limit=limit,
-        cursor=parsed_cur,
+        cursor=parse_cursor(cursor),
     )
     if userdata:
         params.username = userdata.username
     return await paginate(params, service.words)
 
 
-@router.post("/words")
+@router.post("/words", status_code=status.HTTP_201_CREATED)
 async def add_word_global(
-    userdata: Annotated[str, Security(get_userdata_strict, scopes=["admin"])],
+    userdata: Annotated[Tokens, Security(get_userdata_strict, scopes=["admin"])],
     service: Annotated[WordService, Depends(get_word_service)],
     word_data: AddWordRequest,
 ):
@@ -61,12 +53,11 @@ async def add_word_global(
         en=word_data.en,
         ru=word_data.ru,
         transcription=word_data.transcription,
+        examples=word_data.examples,
     )
-    try:
-        await service.add_word(word)
-        return JSONResponse({"status": "ok"})
-    except errors.AlreadyExistsError as e:
-        return JSONResponse({"detail": str(e)}, status.HTTP_400_BAD_REQUEST)
+    # A duplicate word is reported as AlreadyExistsError -> 409.
+    await service.add_word(word)
+    return {"status": "ok"}
 
 
 @router.get("/search")
@@ -74,7 +65,7 @@ async def search(
     userdata: Annotated[Tokens | None, Security(get_userdata, scopes=[])],
     service: Annotated[WordService, Depends(get_word_service)],
     query: str = Query(min_length=2),
-    limit: int = Query(10, alias="per_page"),
+    limit: int = Query(10, alias="per_page", ge=1, le=MAX_SEARCH_LIMIT),
 ) -> SearchResponse:
     user = userdata.username if userdata else None
     words_domain = await service.search(query, limit, user)
@@ -86,7 +77,5 @@ async def get_word(
     service: Annotated[WordService, Depends(get_word_service)],
     word: str,
 ) -> Word:
-    try:
-        return await service.get_word(word)
-    except errors.NotFound as e:
-        return JSONResponse({"detail": str(e)}, status.HTTP_404_NOT_FOUND)
+    # A missing word is reported as NotFound -> 404.
+    return await service.get_word(word)

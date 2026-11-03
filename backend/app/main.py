@@ -1,6 +1,7 @@
 import contextlib
 
 import logger
+from api.errors import register_error_handlers
 from api.middleware.error import error_logger_middleware
 from api.middleware.request import REQUEST_ID_HEADER, request_context_middleware
 from api.v1.router import router as api_router
@@ -80,5 +81,7 @@ def init() -> FastAPI:
 
     app.include_router(health_router)
     app.include_router(api_router)
+
+    register_error_handlers(app)
 
     return app

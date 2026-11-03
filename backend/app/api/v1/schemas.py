@@ -72,6 +72,7 @@ class AddWordRequest(BaseModel):
     en: str
     ru: list[str]
     transcription: str
+    examples: list[str] | None = None
 
 
 class SearchResponse(BaseModel):
