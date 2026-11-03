@@ -60,7 +60,7 @@ function Jar() {
     [sortKey],
   );
 
-  const { items, setItems, page, hasNext, loading, error, reset, next, prev } =
+  const { items, page, hasNext, loading, error, reset, refresh, next, prev } =
     useCursorPagination(fetcher);
 
   const handleSortChange = useCallback((key) => {
@@ -77,17 +77,13 @@ function Jar() {
     }
   }, [error]);
 
-  const handleDeleted = useCallback(
-    (en) => {
-      const remaining = items.filter((word) => word.en !== en);
-      if (remaining.length === 0) {
-        reset();
-        return;
-      }
-      setItems(remaining);
-    },
-    [items, setItems, reset],
-  );
+  const handleDeleted = useCallback(() => {
+    // Слово уже удалено на сервере. Перечитываем текущую страницу, а не
+    // вырезаем карточку локально: страница добирает слова со следующих
+    // позиций и в сетке не остаётся пустого места на месте удалённого
+    // слова (а опустевшая страница сама сменяется предыдущей).
+    refresh();
+  }, [refresh]);
 
   const {
     wordToDelete,
