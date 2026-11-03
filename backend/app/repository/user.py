@@ -29,3 +29,9 @@ class UserRepository:
         res = await self._session.execute(query)
         user = res.scalar_one_or_none()
         return user_orm_to_domain(user)
+
+    async def get_by_id(self, user_id: int) -> User | None:
+        query = select(UserORM).where(UserORM.id == user_id)
+        res = await self._session.execute(query)
+        user = res.scalar_one_or_none()
+        return user_orm_to_domain(user)

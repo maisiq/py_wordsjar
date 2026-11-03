@@ -34,6 +34,29 @@ class UserWordORM(Base):
     word: Mapped["WordORM"] = relationship("WordORM", viewonly=True)
 
 
+class AuthSessionORM(Base):
+    """Refresh session, or a revoked access token, keyed by a hash of the token.
+
+    Only the sha256 of a token is stored: a database dump does not expose usable
+    refresh tokens.
+    """
+
+    __tablename__ = "auth_session"
+
+    token_hash: Mapped[str] = mapped_column(String(64), primary_key=True)
+    #: ``refresh`` for a live session, ``access`` for a revoked access token.
+    kind: Mapped[str] = mapped_column(String(16), nullable=False)
+    user_id: Mapped[int] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, index=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=text("now()"), nullable=False
+    )
+
+    user: Mapped["UserORM"] = relationship("UserORM", viewonly=True)
+
+
 class WordORM(Base):
     __tablename__ = "words"
 

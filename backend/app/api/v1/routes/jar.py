@@ -14,9 +14,9 @@ from services.pagination import (
     MAX_PAGE_SIZE,
     Paginated,
     Params,
+    paginate,
     parse_cursor,
     parse_sort_fields,
-    paginate,
 )
 
 router = APIRouter(
