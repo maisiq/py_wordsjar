@@ -3,6 +3,10 @@ import { useCallback, useRef, useState } from 'react';
 /**
  * Cursor-based pagination matching the vanilla app behaviour.
  * fetcher(params) should return { items, has_next, next_cursor }
+ *
+ * refresh() re-reads the CURRENT page with its stored cursor: after a word
+ * is removed server-side the page is refilled from the following rows
+ * instead of keeping a hole where the deleted item used to be.
  */
 export function useCursorPagination(fetcher, { perPage = 30 } = {}) {
   const [items, setItems] = useState([]);
@@ -26,6 +30,11 @@ export function useCursorPagination(fetcher, { perPage = 30 } = {}) {
       if (direction === 'reset') {
         targetPage = 1;
         cursorsRef.current = { 1: '' };
+      } else if (direction === 'refresh') {
+        // Та же страница тем же курсором: после удаления слова сервер
+        // досылает в окно страницы следующие строки, и пустая клетка
+        // на месте удалённой карточки не остаётся.
+        cursor = cursorsRef.current[page] || '';
       } else if (direction === 'next') {
         targetPage = page + 1;
         cursor = cursorsRef.current[targetPage] || '';
@@ -60,6 +69,11 @@ export function useCursorPagination(fetcher, { perPage = 30 } = {}) {
 
         if (list.length === 0 && targetPage > 1) {
           setHasNext(false);
+          if (direction === 'refresh') {
+            // На текущей странице больше нет слов (удалили последнее):
+            // показываем предыдущую, чтобы не оставлять пустой экран.
+            return load('prev');
+          }
           setPage(Math.max(1, targetPage - 1));
           return;
         }
@@ -88,6 +102,7 @@ export function useCursorPagination(fetcher, { perPage = 30 } = {}) {
   );
 
   const reset = useCallback(() => load('reset'), [load]);
+  const refresh = useCallback(() => load('refresh'), [load]);
   const next = useCallback(() => load('next'), [load]);
   const prev = useCallback(() => load('prev'), [load]);
 
@@ -100,6 +115,7 @@ export function useCursorPagination(fetcher, { perPage = 30 } = {}) {
     error,
     load,
     reset,
+    refresh,
     next,
     prev,
   };
