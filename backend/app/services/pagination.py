@@ -42,7 +42,7 @@ def decode_cursor(cur: str) -> Cursor:
 
 
 async def paginate(
-    params: Params, 
+    params: Params,
     fn: Callable[[QueryParams], Coroutine[Any, Any, list[T]]],
 ) -> Paginated[T]:
     limit = params.limit + 1
@@ -67,9 +67,13 @@ async def paginate(
         query_params.pointer = params.cursor.value.split(",")
 
     items = await fn(query_params)
+    pi = Paginated(items=items)
+
+    if len(pi.items) == 0:
+        return pi
 
     if backward:
-        items.sort(
+        pi.items.sort(
             key=lambda item: tuple(getattr(item, f) for f in query_params.sort_by),
             reverse=query_params.desc,
         )
@@ -81,7 +85,7 @@ async def paginate(
 
     if extra:
         has_next = True
-    
+
     if params.cursor:
         if params.cursor.next:
             has_prev = True
@@ -89,8 +93,6 @@ async def paginate(
             has_next = True
             if extra:
                 has_prev = True
-    
-    pi = Paginated(items=items)
 
     cur = params.cursor or Cursor(field=",".join(query_params.sort_by), desc=params.desc, value="", next=True)
 
@@ -101,18 +103,13 @@ async def paginate(
         pi.has_next = True
         cur.next = True
 
-        if backward and len(items) <= params.limit:
-            if len(items) > 0:
-                cur.value = get_cursor_value(pi.items[-1])
-                pi.next_cursor = encode_cursor(cur)
-        elif backward:
-            pi.items = items[1:params.limit+1]
-            cur.value = get_cursor_value(pi.items[-1])
-            pi.next_cursor = encode_cursor(cur)
+        if backward and len(items) > params.limit:
+            pi.items.pop(0)
         else:
-            pi.items = items[:params.limit]
-            cur.value = get_cursor_value(pi.items[-1])
-            pi.next_cursor = encode_cursor(cur)
+            pi.items.pop()
+
+        cur.value = get_cursor_value(pi.items[-1])
+        pi.next_cursor = encode_cursor(cur)
 
     if has_prev:
         pi.has_prev = True

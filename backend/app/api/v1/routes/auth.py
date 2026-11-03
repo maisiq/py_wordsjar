@@ -39,17 +39,17 @@ async def authenticate_user(
     try:
         return await service.authenticate(req.username, req.password)
     except AuthError as e:
-        return JSONResponse({"detail": str(e)}, 400)
+        return JSONResponse({"detail": str(e)}, status.HTTP_400_BAD_REQUEST)
 
 
 @router.get("/user/info")
 async def user_info(
     userdata: Annotated[str, Depends(get_userdata_strict)],
     service: Annotated[AuthService, Depends(get_auth_service)],
-) -> UserInfoResponse | None:
+) -> UserInfoResponse:
     info = await service.get_user_info(userdata.username)
     if not info:
-        return JSONResponse({"detail": "not found"}, 404)
+        return JSONResponse({"detail": "user not found"}, status.HTTP_404_NOT_FOUND)
     return info
 
 
@@ -57,7 +57,7 @@ async def user_info(
 async def logout(
     userdata: Annotated[str, Depends(get_userdata_strict)],
     service: Annotated[AuthService, Depends(get_auth_service)],
-) -> SuccessResponse | None:
+) -> SuccessResponse:
     await service.logout(userdata)
     return SuccessResponse()
 
@@ -70,4 +70,4 @@ async def refresh(
     try:
         return await service.get_new_tokens(token)
     except InvalidToken as e:
-        return JSONResponse({"detail": str(e)}, 400)
+        return JSONResponse({"detail": str(e)}, status.HTTP_400_BAD_REQUEST)

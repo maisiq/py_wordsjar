@@ -25,13 +25,12 @@ async def word_list(
     desc: bool = Query(False),
     cursor: str | None = None,
 ) -> Paginated[Word]:
+    parsed_cur = None
     if cursor:
         try:
             parsed_cur = decode_cursor(cursor)
-        except ValidationError as e:
+        except Exception:
             parsed_cur = None
-    else:
-        parsed_cur = None
 
     sort_fields = sort.split(",")
     for field in sort_fields:

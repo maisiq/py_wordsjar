@@ -40,7 +40,7 @@ async def jar_words(
     for field in sort_fields:
         if not JarWord.is_valid_sort_field(field):
             return JSONResponse(
-                {"detail": f"Invalid sort field ({field}). Possible values are {JarWord.valid_sort_fields}"}, 
+                {"detail": f"Invalid sort field ({field}). Possible values are {JarWord.valid_sort_fields}"},
                 status.HTTP_400_BAD_REQUEST,
             )
 

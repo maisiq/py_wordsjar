@@ -45,6 +45,7 @@ class AuthService:
         user = User(
             username=username,
             hashed_password=hashed,
+            role="user",
         )
         try:
             await self._user_repo.add(user)
