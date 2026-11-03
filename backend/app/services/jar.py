@@ -2,7 +2,7 @@ from enum import StrEnum
 from logging import Logger
 from typing import Protocol
 
-from core.errors import AlreadyExistsError, InternalError
+from core.errors import AlreadyExistsError, AppError, InternalError
 from models.domain import Word
 from repository.params import QueryParams
 
@@ -27,6 +27,8 @@ class JarService:
     async def words(self, username: str, params: QueryParams) -> list[Word]:
         try:
             return await self._repo.words(username, params)
+        except AppError:
+            raise
         except Exception as e:
             self._log.error("failed to get word list: %s | error_type: %s", e, type(e))
             raise InternalError()

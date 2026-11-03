@@ -2,7 +2,7 @@ import datetime as dt
 from logging import Logger
 from typing import Protocol
 
-from core.errors import InternalError, NotFound
+from core.errors import AppError, InternalError, NotFound
 from models.domain import TestWord, UserWord, Word
 from repository.params import QueryParams
 
@@ -28,6 +28,8 @@ class ExamService:
     async def test_words(self, username: str, params: QueryParams) -> list[TestWord]:
         try:
             words = await self._repo.test_words(username, params)
+        except AppError:
+            raise
         except Exception as e:
             self._log.error("failed to get test words for user(%s): %s", username, e)
             raise InternalError("internal error")

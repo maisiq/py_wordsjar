@@ -1,6 +1,6 @@
 from typing import Annotated
 
-from api.deps import get_jar_service, get_userdata_strict
+from api.deps import get_cursor_secret, get_jar_service, get_userdata_strict
 from api.v1.schemas import (
     AddJarWordRequest,
     AddWordsToJarResponse,
@@ -29,18 +29,26 @@ router = APIRouter(
 async def jar_words(
     userdata: Annotated[Tokens, Security(get_userdata_strict, scopes=["user", "admin"])],
     service: Annotated[JarService, Depends(get_jar_service)],
+    secret: Annotated[str, Depends(get_cursor_secret)],
     sort: str = Query("rating,id", alias="order_by", min_length=1),
     desc: bool = Query(False),
     limit: int = Query(10, alias="per_page", ge=1, le=MAX_PAGE_SIZE),
     cursor: str | None = None,
 ) -> Paginated[Word]:
+    # The rating is deliberately not part of the response model: it is an
+    # internal weight, used here only to order the jar.
     params = Params(
         limit=limit,
         desc=desc,
         sort=parse_sort_fields(sort, JarWord.valid_sort_fields()),
-        cursor=parse_cursor(cursor),
+        cursor=parse_cursor(cursor, secret),
     )
-    return await paginate(params, lambda q: service.words(userdata.username, q))
+    return await paginate(
+        params,
+        lambda q: service.words(userdata.username, q),
+        allowed_fields=JarWord.valid_sort_fields(),
+        secret=secret,
+    )
 
 
 @router.post("", status_code=status.HTTP_201_CREATED)

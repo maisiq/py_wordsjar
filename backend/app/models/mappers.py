@@ -1,4 +1,4 @@
-from .domain import JarWord, User, Word
+from .domain import JarWord, TestWord, User, Word
 from .orm import UserORM, WordORM
 
 
@@ -10,6 +10,7 @@ def word_orm_to_domain(w: WordORM) -> Word:
         transcription=w.transcription,
         examples=w.examples,
     )
+
 
 def user_orm_to_domain(u: UserORM | None) -> User | None:
     if u is None:
@@ -31,4 +32,16 @@ def create_jar_word(w: WordORM, rating: float) -> JarWord:
         transcription=w.transcription,
         examples=w.examples,
         rating=rating,
+    )
+
+
+def create_test_word(w: WordORM, rating: float, last_attempt) -> TestWord:
+    return TestWord(
+        id=w.id,
+        en=w.en,
+        ru=w.ru,
+        transcription=w.transcription,
+        examples=w.examples,
+        rating=rating,
+        last_attempt=last_attempt,
     )
