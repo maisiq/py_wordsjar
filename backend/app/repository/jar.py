@@ -5,7 +5,7 @@ from models.mappers import create_jar_word, create_test_word, word_orm_to_domain
 from models.orm import UserORM, UserWordORM, WordORM
 from repository.columns import coerce_cursor_value, resolve_columns
 from repository.params import QueryParams
-from sqlalchemy import delete, select, tuple_, update
+from sqlalchemy import delete, func, select, tuple_, update
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -17,8 +17,12 @@ SORT_COLUMNS = {
     "last_attempt": UserWordORM.last_attempt,
 }
 
-#: A word rated at the maximum is considered learned.
+#: Rating policy. A correct answer adds points proportional to the number of
+#: attempts, a wrong one subtracts a flat amount, and the result is clamped.
+SUCCESS_POINTS = 0.5
+FAILURE_POINTS = 0.25
 MAX_RATING = 5.0
+MIN_RATING = 0.0
 
 #: A word is due again one day after the last attempt.
 COOLDOWN = dt.timedelta(days=1)
@@ -65,7 +69,7 @@ class JarRepository:
         inserted_rows = res.all()
         return len(inserted_rows)
 
-    async def get_word_by_id(self, word_id: str) -> Word | None:
+    async def get_word_by_id(self, word_id: int) -> Word | None:
         query = select(WordORM).where(WordORM.id == word_id)
         res = await self._session.execute(query)
         word_orm = res.scalar_one_or_none()
@@ -98,24 +102,51 @@ class JarRepository:
         )
         return user_word
 
-    async def update_user_word(self, uw: UserWord) -> None:
-        res = await self._session.execute(
-            select(UserORM.id).where(UserORM.username == uw.username)
+    async def apply_answer(
+        self, username: str, word_id: int, *, correct: bool
+    ) -> tuple[float, int] | None:
+        """Record an answer and move the word's rating forward in one statement.
+
+        The rating used to be read, modified in Python and written back, so two
+        concurrent answers raced and the later write won. A single ``UPDATE``
+        cannot lose an update, and putting the cooldown into the ``WHERE`` clause
+        makes "this word is due" part of the same atomic step: a row comes back
+        only when the answer was actually applied.
+        """
+        now = dt.datetime.now(dt.UTC).replace(tzinfo=None)
+        cutoff = now - COOLDOWN
+
+        if correct:
+            rating_delta = SUCCESS_POINTS * func.greatest(UserWordORM.attempts, 1)
+            attempts = UserWordORM.attempts + 1
+        else:
+            rating_delta = -FAILURE_POINTS
+            attempts = 1
+
+        new_rating = func.greatest(
+            func.least(UserWordORM.rating + rating_delta, MAX_RATING),
+            MIN_RATING,
         )
-        user_id = res.scalar_one()
 
         stmt = (
             update(UserWordORM)
-            .where(UserWordORM.user_id == user_id, UserWordORM.word_id == uw.word_id)
-            .values(
-                rating=uw.rating,
-                attempts=uw.attempts,
-                last_attempt=uw.last_attempt,
+            .where(
+                UserWordORM.word_id == word_id,
+                UserWordORM.user_id
+                == select(UserORM.id).where(UserORM.username == username).scalar_subquery(),
+                UserWordORM.last_attempt < cutoff,
             )
+            .values(rating=new_rating, attempts=attempts, last_attempt=now)
+            .returning(UserWordORM.rating, UserWordORM.attempts)
         )
 
-        await self._session.execute(stmt)
+        res = await self._session.execute(stmt)
+        row = res.one_or_none()
         await self._session.commit()
+
+        if row is None:
+            return None
+        return row.rating, row.attempts
 
     async def test_words(self, username: str, params: QueryParams) -> list[TestWord]:
         order_fields = resolve_columns(SORT_COLUMNS, params.sort_by or ["rating", "last_attempt"])
