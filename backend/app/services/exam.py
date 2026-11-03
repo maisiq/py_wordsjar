@@ -57,8 +57,9 @@ class ExamService:
             if word.en == answer:
                 result = True
         else:
+            answer = answer.replace("ё", "е")
             for t in word.ru:
-                if t == answer:
+                if t.replace("ё", "е") == answer:
                     result = True
                     break
 
