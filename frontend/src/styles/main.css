@@ -1,0 +1,1096 @@
+/* ============================================================
+   1. Переменные и глобальные настройки
+   ============================================================ */
+:root {
+    --primary-purple: #B978FF;
+    --secondary-purple: #A34EFF;
+    --primary-black: #121111;
+
+    /* Переопределение Bootstrap primary (убирает синий) */
+    --bs-primary: #B978FF;
+    --bs-primary-rgb: 185, 120, 255;
+    --bs-link-color: #A34EFF;
+    --bs-link-color-rgb: 163, 78, 255;
+    --bs-link-hover-color: #8e44dd;
+    --bs-link-hover-color-rgb: 142, 68, 221;
+    --bs-focus-ring-color: rgba(163, 78, 255, 0.35);
+}
+
+body {
+    background-color: #DAE1E6;
+}
+
+/* Резервируем место под вертикальный скроллбар: страницы с прокруткой и без
+   неё больше не сдвигаются по горизонтали друг относительно друга */
+html {
+    scrollbar-gutter: stable;
+}
+
+a {
+    color: var(--secondary-purple);
+}
+a:hover {
+    color: #8e44dd;
+}
+a:focus-visible {
+    outline: 2px solid var(--secondary-purple);
+    outline-offset: 2px;
+}
+
+
+/* ============================================================
+   2. Кнопки и состояния
+   ============================================================ */
+.btn {
+    color: var(--primary-purple);
+    border-radius: 4px;
+    border: 1px solid var(--secondary-purple);
+    background: none;
+    --bs-btn-focus-shadow-rgb: 163, 78, 255;
+}
+.btn:hover {
+    background-color: var(--primary-purple);
+    color: #fff;
+    border-color: var(--primary-purple);
+}
+.btn:focus,
+.btn:focus-visible,
+.btn:active,
+.btn.active,
+.btn:first-child:active {
+    color: #fff !important;
+    background-color: var(--primary-purple) !important;
+    border-color: var(--secondary-purple) !important;
+    box-shadow: 0 0 0 0.25rem rgba(163, 78, 255, 0.35) !important;
+}
+.btn:active:focus,
+.btn.active:focus {
+    box-shadow: 0 0 0 0.25rem rgba(163, 78, 255, 0.35) !important;
+}
+
+/* Открытое выпадающее меню добавляет кнопке .show, и Bootstrap красит её
+   в свой синий (#0d6efd) — держим фирменный фиолетовый, чтобы не было
+   синей вспышки при открытии/закрытии меню */
+.btn.show {
+    color: #fff;
+    background-color: var(--primary-purple);
+    border-color: var(--secondary-purple);
+}
+
+.btn-group > .btn:hover {
+    background-color: var(--secondary-purple);
+    border-color: #8e44dd;
+}
+
+.btn-primary {
+    background-color: var(--primary-purple);
+    border-color: var(--secondary-purple);
+    color: #fff;
+}
+.btn-primary:hover,
+.btn-primary:focus,
+.btn-primary:focus-visible,
+.btn-primary:active,
+.btn-primary.active,
+.btn-primary:first-child:active,
+.btn-check:checked + .btn-primary,
+.btn-check:active + .btn-primary {
+    background-color: var(--secondary-purple) !important;
+    border-color: #8e44dd !important;
+    color: #fff !important;
+    box-shadow: 0 0 0 0.25rem rgba(163, 78, 255, 0.35) !important;
+}
+
+.btn-outline-primary {
+    color: var(--primary-purple);
+    border-color: var(--secondary-purple);
+    background: none;
+}
+.btn-outline-primary:hover,
+.btn-outline-primary:focus,
+.btn-outline-primary:focus-visible,
+.btn-outline-primary:active,
+.btn-outline-primary.active,
+.btn-outline-primary:first-child:active {
+    color: #fff !important;
+    background-color: var(--primary-purple) !important;
+    border-color: var(--primary-purple) !important;
+    box-shadow: 0 0 0 0.25rem rgba(163, 78, 255, 0.35) !important;
+}
+
+.btn-success {
+    background-color: var(--primary-purple);
+    border-color: var(--secondary-purple);
+    color: #fff;
+}
+.btn-success:hover,
+.btn-success:focus,
+.btn-success:focus-visible,
+.btn-success:active,
+.btn-success.active,
+.btn-success:first-child:active {
+    color: #fff !important;
+    background-color: var(--secondary-purple) !important;
+    border-color: #8e44dd !important;
+    box-shadow: 0 0 0 0.25rem rgba(163, 78, 255, 0.35) !important;
+}
+
+
+/* ============================================================
+   3. Утилиты, формы и общие элементы
+   ============================================================ */
+.text-primary {
+    color: var(--primary-purple) !important;
+}
+
+.form-control:focus,
+.words-search:focus-within {
+    border-color: var(--secondary-purple);
+    box-shadow: 0 0 0 0.25rem rgba(163, 78, 255, 0.25);
+}
+
+.btn:disabled,
+.btn.disabled {
+    color: #fff !important;
+    background-color: var(--primary-purple) !important;
+    border-color: var(--secondary-purple) !important;
+    opacity: 0.65;
+}
+
+.toast {
+    min-width: 300px;
+}
+
+.row {
+    justify-content: space-evenly;
+}
+
+
+/* ============================================================
+   4. Макет, навигация и поиск
+   ============================================================ */
+.app-container {
+    display: flex;
+    flex-direction: row;
+    align-items: start;
+    justify-content: center;
+    padding-bottom: 2rem;
+}
+
+.sidebar {
+    display: flex;
+    flex-direction: column;
+    justify-content: start;
+    min-width: 200px;
+    min-height: 300px;
+}
+
+.navbar-brand {
+    font-weight: bold;
+    font-size: 1.5rem;
+}
+
+.logo {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-family: 'Pixelify Sans', sans-serif;
+    font-weight: 700;
+    font-size: 2.5rem;
+    text-shadow: -1px -1px 0px rgba(255, 255, 255, 1);
+    margin: 5px 10px 35px 10px;
+    cursor: pointer;
+    max-width: 100%;
+    height: 45px;
+    color: var(--primary-black);
+    text-decoration: none;
+}
+
+.menu {
+    display: flex;
+    width: 100%;
+    height: 100%;
+    justify-content: center;
+}
+.menu ul {
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+.menu li {
+    list-style: none;
+    display: flex;
+    justify-content: center;
+    font-family: "Handjet", sans-serif;
+    font-weight: 700;
+    cursor: pointer;
+    font-size: 1.5rem;
+    color: var(--primary-black);
+    text-shadow: 1px 1px 0px rgba(0, 0, 0, 0.6);
+    padding-left: 7px;
+    letter-spacing: 7px;
+    margin-bottom: 10px;
+    position: relative;
+    height: 30px;
+    width: fit-content;
+}
+.menu li::after {
+    content: "";
+    position: absolute;
+    bottom: -5px;
+    left: 0;
+    width: 100%;
+    height: 3px;
+    background-color: var(--primary-black);
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+.menu li:hover::after {
+    opacity: 1;
+}
+
+.words-search {
+    display: flex;
+    align-items: center;
+    width: 100%;
+    min-height: 3.25rem;
+    padding: 0 1rem;
+    border: 1px solid #ced4da;
+    border-radius: 0.5rem;
+    background-color: #fff;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+.words-search-icon {
+    flex-shrink: 0;
+    width: 1.25rem;
+    height: 1.25rem;
+    margin-right: 0.75rem;
+    fill: #6c757d;
+}
+.words-search-input {
+    flex: 1;
+    min-width: 0;
+    border: none;
+    outline: none;
+    background: transparent;
+    font-size: 1.125rem;
+    line-height: 1.5;
+    padding: 0.875rem 0;
+    color: #212529;
+}
+.words-search-input::placeholder {
+    color: #6c757d;
+    opacity: 1;
+}
+
+
+/* ============================================================
+   5. Анимации и вспомогательные эффекты
+   ============================================================ */
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.page-content {
+    animation: fadeIn 0.3s;
+    max-width: 800px;
+    width: 100%;
+    margin: 0 10px;
+}
+
+.spinner-border {
+    width: 3rem;
+    height: 3rem;
+}
+
+
+/* ============================================================
+   6. Карточки слов (базовые стили)
+   ============================================================ */
+.word-card {
+    transition: transform 0.2s;
+}
+.word-card:hover {
+    transform: translateY(-2px);
+}
+
+.word-card__box {
+    position: relative;
+    margin-bottom: 10px;
+    width: fit-content;
+}
+
+.word-card__button {
+    position: relative;
+    top: 0;
+    z-index: 5;
+    cursor: pointer;
+    background-color: var(--primary-purple);
+    color: #fff;
+    transition: top 0.2s ease-in-out;
+    width: 220px;
+    height: 40px;
+}
+.word-card__button:hover {
+    top: 6px;
+}
+
+.word-card__shadow {
+    background-color: #A34EFF;
+    box-shadow: 0 0 2px rgba(0, 0, 0, 0.25);
+    position: absolute;
+    top: 6px;
+    z-index: 0;
+    width: 220px;
+    height: 40px;
+}
+
+.word-card-en {
+    font-size: 1rem;
+    font-weight: 600;
+    color: #fff;
+    text-shadow: 0 0.5px 1px rgba(0, 0, 0, 0.25);
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* Кнопка добавления */
+.word-card-add__box {
+    position: relative;
+    top: -3px;
+}
+.word-card-add__btn {
+    flex-shrink: 0;
+    border: none;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    position: relative;
+    top: 0;
+    z-index: 1;
+    background-color: #00C889;
+    color: #fff;
+    transition: top 0.1s ease-in-out;
+    width: 1.5rem;
+    height: 1.5rem;
+}
+.word-card-add__btn:hover {
+    top: 2.5px;
+}
+.word-card-add__shadow {
+    position: absolute;
+    top: 2px;
+    z-index: 0;
+    background-color: #008a5e;
+    box-shadow: 0 0 1px rgba(0, 0, 0, 0.25);
+    flex-shrink: 0;
+    border: none;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    width: 1.5rem;
+    height: 1.5rem;
+}
+.word-card-add-icon {
+    display: block;
+    width: 0.875rem;
+    height: 0.875rem;
+    flex-shrink: 0;
+}
+
+/* Кнопка удаления из банки */
+
+.word-card-action--delete {
+    position: relative;
+    z-index: 1;
+    top: 0;
+    
+    border: none;
+    border-radius: 50%;
+
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    width: 1.5rem;
+    height: 1.5rem;
+
+    background-color: #fff;
+    color: var(--primary-black);
+    transition: top 0.1s ease-in-out;
+}
+.word-card-action--delete__shadow {
+    position: absolute;
+    top: 2px;
+    z-index: 0;
+    background-color: #bdbdbd;
+    box-shadow: 0 0 1px rgba(0, 0, 0, 0.25);
+    flex-shrink: 0;
+    border: none;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    width: 1.5rem;
+    height: 1.5rem;
+}
+.word-card-action--delete:hover {
+    top: 2.2px;
+}
+.word-card-action--delete:focus-visible {
+    outline: 2px solid #fff;
+    outline-offset: 1px;
+}
+.word-card-action--delete:disabled {
+    opacity: 0.6;
+    cursor: wait;
+}
+.word-card-delete-icon {
+    width: 0.5rem;
+    height: 0.5rem;
+}
+
+/* Другие действия */
+.word-card-action {
+    flex-shrink: 0;
+    width: 1.5rem;
+    height: 1.5rem;
+    border: none;
+    border-radius: 0.375rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+}
+.word-card-action-icon {
+    display: block;
+    width: 0.875rem;
+    height: 0.875rem;
+    flex-shrink: 0;
+}
+.word-card-action--add {
+    background-color: #00C889;
+    color: #fff;
+}
+.word-card-action--add:hover {
+    background-color: #00b47b;
+}
+.word-card-action--added {
+    position: relative;
+    top: 3px;
+    background-color: #a563ed;
+    border: 1px solid #995cdb;
+    color: #fff;
+    cursor: pointer;
+}
+
+
+/* Кнопки подтверждения удаления */
+.btn-modal-danger,
+.btn-modal-secondary {
+    min-width: 6rem;
+    border: 1px solid transparent;
+    color: #fff !important;
+}
+.btn-modal-danger {
+    background-color: #C75B6C !important;
+    border-color: #B04B5B !important;
+}
+.btn-modal-danger:hover,
+.btn-modal-danger:focus,
+.btn-modal-danger:focus-visible,
+.btn-modal-danger:active {
+    background-color: #A94655 !important;
+    border-color: #923A48 !important;
+    color: #fff !important;
+}
+.btn-modal-secondary {
+    background-color: #8B929B !important;
+    border-color: #787F88 !important;
+}
+.btn-modal-secondary:hover,
+.btn-modal-secondary:focus,
+.btn-modal-secondary:focus-visible,
+.btn-modal-secondary:active {
+    background-color: #747B84 !important;
+    border-color: #636971 !important;
+    color: #fff !important;
+}
+.btn-modal-danger:disabled,
+.btn-modal-secondary:disabled {
+    opacity: 0.65;
+    cursor: wait;
+}
+
+
+/* ============================================================
+   7. Элементы тестирования
+   ============================================================ */
+#testWord {
+    font-size: 2rem;
+    font-weight: bold;
+    color: var(--primary-purple);
+    min-height: 60px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+#testHint {
+    font-size: 1.1rem;
+}
+
+
+/* ============================================================
+   8. Модальные окна и детали слова
+   ============================================================ */
+.word-detail h3 {
+    border-bottom: 2px solid var(--secondary-purple);
+    padding-bottom: 0.5rem;
+}
+.word-detail .list-group-item {
+    border-left: 3px solid var(--secondary-purple);
+    margin-bottom: 0.25rem;
+}
+.word-detail .list-group-item:hover {
+    background-color: #f8f9fa;
+}
+
+.modal-content {
+    border-radius: 10px;
+}
+.modal-header {
+    background-color: #f8f9fa;
+    border-bottom: 2px solid #dee2e6;
+    border-radius: 10px 10px 0 0;
+}
+
+
+/* ============================================================
+   9. Пагинация
+   ============================================================ */
+.pagination {
+    margin-bottom: 0;
+}
+.page-link {
+    font-family: "Handjet", sans-serif;
+    font-weight: 800;
+    font-size: 1.5rem;
+    text-shadow: -1px -1px 0px rgba(255, 255, 255, 1);
+    border: none;
+    background: none;
+    color: var(--primary-purple);
+}
+.page-link:hover {
+    color: var(--secondary-purple);
+    background: none;
+}
+.page-link:focus,
+.page-link:focus-visible,
+.page-link:active {
+    z-index: 3;
+    color: var(--secondary-purple);
+    background: none !important;
+    box-shadow: none !important;
+    outline: 0;
+}
+.page-item {
+    border: none;
+}
+.page-item.active .page-link {
+    background: none !important;
+    border: none;
+    color: rgb(53, 53, 53);
+}
+.page-item.disabled .page-link {
+    color: #6c757d;
+    pointer-events: none;
+    background: none;
+    border: none;
+    cursor: not-allowed;
+}
+#wordsPaginationInfo,
+#jarPaginationInfo {
+    font-size: 0.875rem;
+}
+
+
+/* ============================================================
+   9.1 Сортировка банки
+   ============================================================ */
+/* Кнопка только с иконкой: паддинги задают нормальный размер,
+   ::after (каретка Bootstrap) убран */
+.sort-dropdown__toggle {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.375rem;
+}
+.sort-dropdown__toggle::after {
+    content: none;
+    display: none;
+}
+.sort-dropdown__icon {
+    width: 1rem;
+    height: 1rem;
+    flex-shrink: 0;
+    fill: currentColor;
+}
+.sort-dropdown__menu .sort-dropdown__item {
+    font-size: 0.9375rem;
+}
+.sort-dropdown__menu .sort-dropdown__item.active,
+.sort-dropdown__menu .sort-dropdown__item:active {
+    background-color: var(--primary-purple);
+    color: #fff;
+}
+
+
+/* ============================================================
+   10. Дополнительные стили для карточек (Bootstrap)
+   ============================================================ */
+.card-title {
+    color: var(--primary-purple);
+    margin-bottom: 0.5rem;
+}
+.card-text {
+    color: #495057;
+}
+
+.word-translations {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+
+/* ============================================================
+   11. Медиа-запросы (точно как в оригинале, без верхних границ)
+   ============================================================ */
+
+/* ---------- до 440px ---------- */
+@media (max-width: 440px) {
+    #testWord {
+        font-size: 1.5rem;
+    }
+    .container {
+        padding-left: 15px;
+        padding-right: 15px;
+    }
+    .app-container {
+        flex-direction: column;
+        align-items: center;
+        width: 90%;
+    }
+    .sidebar {
+        min-height: 0;
+    }
+    .sidebar--right {
+        display: none;
+    }
+    .word-card__box {
+        width: 100%;
+        max-width: 300px;
+    }
+    .word-card__button,
+    .word-card__shadow {
+        width: 100%;
+        height: 40px;
+    }
+    .col-md-6 {
+        width: 100%;
+        max-width: 300px;
+    }
+}
+
+/* ---------- от 440px ---------- */
+@media (min-width: 440px) {
+    #testWord {
+        font-size: 1.5rem;
+    }
+
+    .container {
+        padding-left: 15px;
+        padding-right: 15px;
+        width: 100%;
+        max-width: 575px;
+    }
+
+    .app-container {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .sidebar {
+        min-height: 0;
+    }
+
+    .sidebar--right {
+        display: none;
+    }
+
+    .card-body {
+        padding-top: 2rem;
+    }
+
+    .word-card__box {
+        width: 100%;
+        max-width: 300px;
+    }
+    .word-card__button,
+    .word-card__shadow {
+        width: 100%;
+        height: 40px;
+    }
+    .col-md-6 {
+        width: 50%;
+        max-width: 300px;
+    }
+    .menu ul {
+        flex-direction: row;
+        justify-content: center;
+    }
+    .menu li {
+        margin: 0 10px 10px 10px;
+    }
+}
+
+/* ---------- от 769px ---------- */
+@media (min-width: 769px) {
+    #testWord {
+        font-size: 1.5rem;
+    }
+    .container,
+    .container-lg,
+    .container-md,
+    .container-sm {
+        max-width: 575px;
+    }
+    .container {
+        padding-left: 15px;
+        padding-right: 15px;
+    }
+    .col-md-6 {
+        flex: 0 0 auto;
+    }
+    .word-card__box {
+        width: 100%;
+        min-width: 230px;
+    }
+    .word-card__button,
+    .word-card__shadow {
+        width: 100%;
+        height: 40px;
+    }
+}
+
+/* ---------- от 992px ---------- */
+@media (min-width: 992px) {
+    .container,
+    .container-lg,
+    .container-md,
+    .container-sm {
+        max-width: 960px;
+    }
+    .col-lg-4 {
+        width: fit-content;
+    }
+    .col-md-6 {
+        flex: 0 0 auto;
+    }
+
+    .card-body {
+        padding-top: 2rem;
+        padding-bottom: 2rem;
+    }
+}
+
+@media (min-width: 440px) and (max-width: 1200px) {
+    .menu {
+        margin-bottom: 1rem;
+    }
+}
+/* ---------- от 1200px ---------- */
+@media (min-width: 1200px) {
+    .container,
+    .container-lg,
+    .container-md,
+    .container-sm,
+    .container-xl {
+        max-width: 1000px;
+    }
+    .col-md-6 {
+        flex: 0 0 auto;
+        width: fit-content;
+    }
+    .container {
+        padding-left: 15px;
+        padding-right: 15px;
+    }
+    .app-container {
+        flex-direction: row;
+        align-items: start;
+        width: 100%;
+        /* 200 + 800 + 200 + отступы — уже не влезает в 1000px,
+           из-за чего контент вылезал за контейнер и вёрстка съезжала */
+        max-width: 1260px;
+    }
+    .sidebar {
+        display: flex;
+        min-width: 200px;
+        min-height: 300px;
+        justify-content: start;
+        flex-direction: column;
+    }
+    .sidebar--right {
+        display: flex;
+    }
+    .menu ul {
+        flex-direction: column;
+        justify-content: center;
+    }
+    .menu li {
+        margin: 0 0 10px 0;
+    }
+
+    .card-body {
+        padding-top: 1.2rem;
+        padding-bottom: 1.2rem;
+    }
+    
+}
+
+/* ---------- от 1400px ---------- */
+@media (min-width: 1400px) {
+    .container,
+    .container-lg,
+    .container-md,
+    .container-sm,
+    .container-xl,
+    .container-xxl {
+        max-width: 1320px;
+    }
+
+    .card-body {
+        padding-top: 2rem;
+        padding-bottom: 2rem;
+    }
+}
+
+/* Active menu item (React NavLink) */
+.menu li a.active::after,
+.menu li:has(a.active)::after {
+    opacity: 1;
+}
+.menu li a {
+    color: inherit;
+    text-decoration: none;
+}
+
+
+/* ============================================================
+   12. Сетка карточек слов (CSS Grid)
+   Ряд по центру, карточки слева направо, фиксированная ширина
+   ============================================================ */
+.words-row {
+    display: grid;
+    grid-template-columns: repeat(1, 220px);
+    justify-content: center;
+    column-gap: 1rem;
+    row-gap: 1.1rem;
+    width: 100%;
+}
+
+.words-row-message {
+    grid-column: 1 / -1;
+    text-align: center;
+    padding: 0.5rem 0;
+}
+
+/* Карточки внутри грида — всегда 220px, не растягиваются */
+.words-row .word-card__box {
+    width: 100%;
+    max-width: 250px;
+    min-width: 0;
+    margin-bottom: 0;
+}
+
+.words-row .word-card__button,
+.words-row .word-card__shadow {
+    width: 100%;
+    max-width: 250px;
+}
+
+@media (max-width: 439px) {
+    .words-row {
+        grid-template-columns: minmax(0, 300px);
+    }
+    .words-row .word-card__box {
+        width: 100%;
+        max-width: 300px;
+    }
+    .words-row .word-card__button,
+    .words-row .word-card__shadow {
+        width: 100%;
+        max-width: 300px;
+    }
+}
+
+@media (min-width: 440px) {
+    .words-row {
+        grid-template-columns: repeat(2, 45%);
+    }
+}
+
+@media (min-width: 992px) {
+    .words-row {
+        grid-template-columns: repeat(3, 220px);
+        column-gap: 2rem;
+        row-gap: 0.9rem;
+    }
+}
+
+
+/* ============================================================
+   9. Каркас страницы и футер
+   ============================================================ */
+.app-shell {
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+}
+
+/* Растягиваем контент, чтобы футер всегда был прижат к низу */
+.app-main {
+    flex: 1 0 auto;
+}
+
+.site-footer {
+    flex-shrink: 0;
+    margin-top: 0.5rem;
+    padding: 0.75rem 1rem 1.25rem;
+    text-align: center;
+    font-size: 0.875rem;
+    color: #6b7280;
+}
+
+.site-footer a {
+    color: var(--secondary-purple);
+    font-weight: 600;
+    text-decoration: none;
+}
+
+.site-footer a:hover {
+    color: #8e44dd;
+    text-decoration: underline;
+}
+
+
+/* ============================================================
+   10. Кнопка «назад» на страницах входа и регистрации
+   ============================================================ */
+/* Кнопка идёт в потоке первым элементом контейнера: её левый край совпадает
+   с левым краем контента — там же, где начинается логотип wordsJar на главной.
+   В потоке она не перекрывает заголовок на узких экранах. */
+.back-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.5rem;
+    height: 2.5rem;
+    margin-bottom: 0.75rem;
+    padding: 0;
+    border: 2px solid var(--primary-purple);
+    border-radius: 50%;
+    background-color: #fff;
+    color: var(--secondary-purple);
+    cursor: pointer;
+    transition:
+        background-color 0.15s ease,
+        color 0.15s ease,
+        transform 0.1s ease;
+}
+
+.back-button:hover,
+.back-button:focus-visible {
+    background-color: var(--primary-purple);
+    color: #fff;
+}
+
+.back-button:focus-visible {
+    outline: 2px solid var(--secondary-purple);
+    outline-offset: 2px;
+}
+
+.back-button:active {
+    transform: scale(0.94);
+}
+
+.back-button__icon {
+    width: 1.25rem;
+    height: 1.25rem;
+    flex-shrink: 0;
+}
+
+
+/* ============================================================
+   11. Индикатор сложности пароля на странице регистрации
+   ============================================================ */
+.password-hint {
+    margin-top: 0.5rem;
+    font-size: 0.8125rem;
+    line-height: 1.35;
+    color: rgba(18, 17, 17, 0.65);
+}
+
+.password-hint__bar {
+    display: flex;
+    gap: 4px;
+    margin-bottom: 0.375rem;
+}
+
+.password-hint__segment {
+    flex: 1;
+    height: 4px;
+    border-radius: 2px;
+    background-color: rgba(18, 17, 17, 0.12);
+    transition: background-color 0.15s ease;
+}
+
+/* Слабый — красный, средний — янтарный, надёжный — зелёный: цвета привычнее
+   палитры сайта и читаются без легенды */
+.password-hint--weak .password-hint__segment--on {
+    background-color: #d64545;
+}
+
+.password-hint--medium .password-hint__segment--on {
+    background-color: #d99000;
+}
+
+.password-hint--strong .password-hint__segment--on {
+    background-color: #2f9e44;
+}
+
+.password-hint__problems {
+    margin: 0.25rem 0 0;
+    padding-left: 1.1rem;
+    color: #b42318;
+}
