@@ -193,15 +193,24 @@ function Home() {
               </div>
             )}
             {!isLoading &&
-              displayItems.map((word) => (
-                <WordCard
-                  key={word.en + (word.id || '')}
-                  word={word}
-                  onAddToJar={handleAddToJar}
-                  onDelete={isAuthenticated ? requestDelete : undefined}
-                  onOpen={setDetailWord}
-                />
-              ))}
+              displayItems.map((word) => {
+                // У гостя банки нет: in_jar мог приехать из залогиненной
+                // сессии (список не перечитывается при выходе), и тогда
+                // карточка осталась бы совсем без кнопок: «+» не положен
+                // (слово «в банке»), «x» не кому удалять.
+                const cardWord = isAuthenticated
+                  ? word
+                  : { ...word, in_jar: false };
+                return (
+                  <WordCard
+                    key={word.en + (word.id || '')}
+                    word={cardWord}
+                    onAddToJar={handleAddToJar}
+                    onDelete={isAuthenticated ? requestDelete : undefined}
+                    onOpen={setDetailWord}
+                  />
+                );
+              })}
           </div>
 
           {!searchMode && (
