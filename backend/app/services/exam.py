@@ -1,7 +1,7 @@
 from logging import Logger
 from typing import Protocol
 
-from core.errors import AppError, InternalError, NotFound, NotDue
+from core.errors import AppError, InternalError, NotDue, NotFound
 from models.domain import TestWord, UserWord, Word
 from repository.params import QueryParams
 

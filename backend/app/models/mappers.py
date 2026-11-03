@@ -32,6 +32,8 @@ def create_jar_word(w: WordORM, rating: float) -> JarWord:
         transcription=w.transcription,
         examples=w.examples,
         rating=rating,
+        # Everything the jar lists is, by definition, in the jar.
+        in_jar=True,
     )
 
 
@@ -44,4 +46,5 @@ def create_test_word(w: WordORM, rating: float, last_attempt) -> TestWord:
         examples=w.examples,
         rating=rating,
         last_attempt=last_attempt,
+        in_jar=True,
     )

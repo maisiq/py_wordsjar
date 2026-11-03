@@ -1,6 +1,13 @@
 from typing import Annotated
 
-from api.deps import get_auth_service, get_refresh_token, get_userdata_strict
+from api.deps import (
+    get_auth_service,
+    get_refresh_token,
+    get_userdata_strict,
+    login_rate_limit,
+    refresh_rate_limit,
+    signup_rate_limit,
+)
 from api.v1.schemas import (
     AuthenticateRequest,
     CreateUserRequest,
@@ -18,7 +25,7 @@ router = APIRouter(
 )
 
 
-@router.post("/signup", status_code=status.HTTP_201_CREATED)
+@router.post("/signup", status_code=status.HTTP_201_CREATED, dependencies=[Depends(signup_rate_limit)])
 async def create_user(
     service: Annotated[AuthService, Depends(get_auth_service)],
     req: CreateUserRequest,
@@ -28,7 +35,7 @@ async def create_user(
     return SuccessResponse()
 
 
-@router.post("/auth")
+@router.post("/auth", dependencies=[Depends(login_rate_limit)])
 async def authenticate_user(
     service: Annotated[AuthService, Depends(get_auth_service)],
     req: AuthenticateRequest,
@@ -57,7 +64,7 @@ async def logout(
     return SuccessResponse()
 
 
-@router.post("/refresh")
+@router.post("/refresh", dependencies=[Depends(refresh_rate_limit)])
 async def refresh(
     token: Annotated[str | None, Depends(get_refresh_token)],
     service: Annotated[AuthService, Depends(get_auth_service)],
